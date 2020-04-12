@@ -26,7 +26,7 @@ OPT=-O2 -funroll-all-loops
 
 MODS= 
 
-OBJ=otter_spheres.o 
+OBJ=otter_spheres.o otter_fibers.o otter_ligaments.o otter_main.o
 
 otter.x : $(OBJ)
 	$(FC) -o $@ $^

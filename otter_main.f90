@@ -27,8 +27,8 @@ program otter
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Dependencies
     use spheres_place
-    use otter_fibers
-    use otter_ligaments
+    use fibers_place
+    use ligaments_place
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Variables & Constants
@@ -69,7 +69,7 @@ program otter
         in_unit=51
         out_unit=52
         open(unit=in_unit,file='otter.in',status='OLD',action='READ')
-        open(unit=out_unit,file='otter.out',status='NEW',action='WRITE'))
+        open(unit=out_unit,file='otter.out',status='NEW',action='WRITE')
         write(out_unit,*) ' Batch input/output selected.'
     end if
 
@@ -87,7 +87,7 @@ program otter
     write(out_unit,*) '     2. Dropped Fibers'
     write(out_unit,*) '     3. Ligamented/Swiss Cheese'
     !!!!! Add new options here, and below in select case...
-    write(out_unit,*,advance='no') ' Enter your selection: '
+    write(out_unit,*) ' Enter your selection: '
     read(in_unit,*) structure_type
 
     ! Call specific subroutine
