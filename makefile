@@ -20,22 +20,32 @@
 # 	Fortran compiler (default: gfortran)
 # Internal Dependencies:
 #	Full OTTER codebase
+.SUFFIXES:
 
 FC=gfortran 
 OPT=-O2 -funroll-all-loops 
+EXE := otter.x
+SRC_DIR := src
+OBJ_DIR := obj
 
-MODS= 
+SRC := $(wildcard $(SRC_DIR)/*.f90)
+OBJ := $(SRC:$(SRC_DIR)/%.f90=$(OBJ_DIR)/%.o)
+MAIN := $(OBJ_DIR)/otter_main.o
+OBJ := $(filter-out $(MAIN),$(OBJ)) $(MAIN) 
 
-OBJ=otter_spheres.o otter_fibers.o otter_ligaments.o otter_main.o
+.PHONY: all clean
 
-otter.x : $(OBJ)
+all: $(EXE)
+
+$(EXE): $(OBJ)
 	$(FC) -o $@ $^
+	mv *.mod $(OBJ_DIR)/.
 
-%.mod: %.f90
-	$(FC) -c $^
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.f90 | $(OBJ_DIR)
+	$(FC) $(OPT) -c -o $@ $^ 
 
-%.o: %.f90 $(MODS)
-	$(FC) -c -o $@ $^
+$(OBJ_DIR):
+	mkdir $@ 
 
 clean:
-	-rm -f *.o *~
+	$(RM) $(OBJ) $(OBJ_DIR)/*.mod *~
