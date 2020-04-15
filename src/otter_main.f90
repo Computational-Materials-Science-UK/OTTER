@@ -26,6 +26,7 @@ program otter
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Dependencies
+    use otter_globals
     use spheres_place
     use fibers_place
     use ligaments_place
@@ -36,22 +37,15 @@ program otter
     implicit none 
 
     ! constants
-    character(len=3),parameter :: version='b.1'
-    character(len=*),parameter :: master_name='Matthew Beck'
-    character(len=*),parameter :: master_email='m.beck@uky.edu'
-    character(len=*),parameter :: master_web='https://beckdt.engr.uky.edu'
+    
 
     ! variables
-    logical :: debug=.false.            ! Enables debugging messages
     logical :: batch_exists,out_exists  ! checks for existing batch I/O files
     integer :: in_unit,out_unit         ! I/O unit numbers
     integer :: structure_type           ! User selected structure version
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Begin code
-
-    ! Set debug status
-    debug=.false.
 
     ! Check for batch input, set-up input, output
     in_unit=5   ! Default for stdin
@@ -76,9 +70,9 @@ program otter
     if (debug) write(*,*) ' I/O setup: (in_unit, out_unit) ',in_unit,out_unit
 
     ! Write code header...
-    write(out_unit,*) ' Welcome to OTTER: Complex Structure Generation Toolkit v',version
-    write(out_unit,*) '   For questions, bugs, etc., visit: ',master_web
-    write(out_unit,*) '   OTTERmaster: ',master_name,' ',master_email
+    write(out_unit,*) ' Welcome to OTTER: Complex Structure Generation Toolkit v',VERSION
+    write(out_unit,*) '   For questions, bugs, etc., visit: ',MASTER_WEB
+    write(out_unit,*) '   OTTERmaster: ',MASTER_NAME,' ',MASTER_EMAIL
     write(out_unit,*) 
 
     ! Get OTTER structure type...
