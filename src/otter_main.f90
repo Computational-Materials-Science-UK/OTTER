@@ -41,11 +41,13 @@ program otter
 
     ! variables
     logical :: batch_exists,out_exists  ! checks for existing batch I/O files
-    integer :: in_unit,out_unit         ! I/O unit numbers
     integer :: structure_type           ! User selected structure version
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Begin code
+
+    ! Initialize rand:
+    call init_random()
 
     ! Check for batch input, set-up input, output
     in_unit=5   ! Default for stdin
@@ -87,11 +89,11 @@ program otter
     ! Call specific subroutine
     select case (structure_type)
     case (1)
-        call otter_spheres(in_unit,out_unit)
+        call otter_spheres()
     case (2)
-        call otter_fibers(in_unit,out_unit)
+        call otter_fibers()
     case (3)
-        call otter_ligaments(in_unit,out_unit)
+        call otter_ligaments()
     !!!!! Add new options here to match above...
     case default
         write(out_unit,*) ' This option is invalid.'

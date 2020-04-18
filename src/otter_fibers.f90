@@ -24,6 +24,9 @@
 
 module fibers_place
 
+    use otter_globals
+    use otter_input
+
     contains
 
     !!!!!
@@ -36,12 +39,11 @@ module fibers_place
     !	none
     ! Internal Dependencies:
     !	[TBA]
-    subroutine otter_fibers(in_unit,out_unit)
+    subroutine otter_fibers()
 
         implicit none 
 
         !!!! Calling parameters
-        integer,intent(IN) :: in_unit,out_unit  ! I/O unit numbers from otter_main
 
         !!!! Constants
         !!!! Variables
