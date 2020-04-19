@@ -58,7 +58,7 @@ program otter
     inquire(FILE='otter.out', exist=out_exists)
 
     if (batch_exists) then
-        if (.not. out_exists) then
+        if (out_exists) then
             write(*,*) ' Batch input exists (otter.in). But otter.out exists and will be overwritten.'
             stop
         end if
