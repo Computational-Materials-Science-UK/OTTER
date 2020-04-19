@@ -9,7 +9,7 @@ module otter_globals
     character(len=*),parameter :: MASTER_WEB='https://beckdt.engr.uky.edu'
     real(kind=DBL),parameter :: PI=4.d0*atan(1.d0)
     
-    logical,parameter :: DEBUG=.false.
+    logical :: DEBUG=.false.
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Global variables...

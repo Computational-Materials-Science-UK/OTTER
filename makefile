@@ -23,7 +23,7 @@
 .SUFFIXES:
 
 FC=gfortran 
-OPT=-O2 -funroll-all-loops 
+OPT=-O2 -funroll-all-loops -fdefault-real-8 -fdefault-double-8 
 EXE := otter.x
 SRC_DIR := src
 OBJ_DIR := obj
