@@ -28,24 +28,16 @@ module otter_input
     use otter_globals
 
     implicit none
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !! Global variables provided...
-    integer :: rves_num
-    character(len=24) :: rves_batch_name
-    character(len=192) :: out_path
-    real(kind=DBL) :: box_length
 
     contains
 
-    subroutine get_gen_input(in_unit,out_unit,debug)
+    subroutine get_gen_input()
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !! Dependencies
  
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !! Variables & Constants
-        integer, intent(IN) :: in_unit,out_unit
-        logical, intent(IN) :: debug
 
         if (debug) write(*,*) ' In otter_input:get_gen_input'
 

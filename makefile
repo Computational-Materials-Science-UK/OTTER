@@ -23,7 +23,7 @@
 .SUFFIXES:
 
 FC=gfortran 
-OPT=-O2 -funroll-all-loops 
+OPT=-O2 -funroll-all-loops -fdefault-real-8 -fdefault-double-8 
 EXE := otter.x
 SRC_DIR := src
 OBJ_DIR := obj
@@ -31,13 +31,15 @@ OBJ_DIR := obj
 SRC := $(wildcard $(SRC_DIR)/*.f90)
 OBJ := $(SRC:$(SRC_DIR)/%.f90=$(OBJ_DIR)/%.o)
 MAIN := $(OBJ_DIR)/otter_main.o
-OBJ := $(filter-out $(MAIN),$(OBJ)) $(MAIN) 
+OBJ := $(filter-out $(MAIN),$(OBJ))
+TEST := $(OBJ_DIR)/otter_test.o
+OBJ := $(filter-out $(TEST),$(OBJ))
 
 .PHONY: all clean
 
 all: $(EXE)
 
-$(EXE): $(OBJ)
+$(EXE): $(OBJ) $(MAIN)
 	$(FC) -o $@ $^
 	mv *.mod $(OBJ_DIR)/.
 
@@ -47,5 +49,11 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.f90 | $(OBJ_DIR)
 $(OBJ_DIR):
 	mkdir $@ 
 
+test: otter_test.x
+
+otter_test.x: $(OBJ) $(TEST)
+	$(FC) -o $@ $^
+	mv *.mod $(OBJ_DIR)/.
+
 clean:
-	$(RM) $(OBJ) $(OBJ_DIR)/*.mod *~
+	$(RM) $(OBJ) $(MAIN) $(TEST) *.x $(OBJ_DIR)/*.mod *~
