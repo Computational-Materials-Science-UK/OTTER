@@ -4,12 +4,13 @@ implicit none
 
 contains
 
-    subroutine otter_cyl_rotate_wrapper(r,cyls,i,nn_count,q_pt,rotation_count)
+    subroutine otter_cyl_rotate_wrapper(r,cyls,i,nn_count,q_pt,rotation_count,box,rotation_error)
         implicit none
 
         !calling parameters
         real(kind=8),dimension(:,:),intent(inout)      :: cyls,rotation_count
         real(kind=8),dimension(3),intent(in)        :: r,q_pt
+        real(kind=8),intent(in) :: box
         integer,dimension(:,:),intent(in)   :: nn_count
         integer,intent(in)                             :: i
                 !local parameters
@@ -20,17 +21,30 @@ contains
         real(kind=8)                    :: pmag,qmag
         integer                 :: j,ii
         logical               :: debug=.false.
+        logical,intent(out)               :: rotation_error
         
+        rotation_error=.false.
         rotation_count(i,1)=rotation_count(i,1)+1
         
         ! if (rotation_count(i,1).eq.5000.or.rotation_count(i,1).eq.10000)debug=.true.
         ! if (rotation_count(i,1).gt.19998)debug=.true.
         if (debug)write(*,*)'                                               '
         if (debug)write(*,*) '************** rotation_count***************',rotation_count(i,1)
-        if (debug)write(*,*)'                                               '
+        if (debug)write(*,*)''
+        ! if (rotation_count(i,1).gt.19998)then
+        !     write(*,*) 'ERROR: rotation count exceeds 19998'
+        !     debug=.true.
+        ! end if                                                
         if (rotation_count(i,1).gt.20000)then
+            write(*,*)'                       '
+            write(*,*) '***************************'
+            write(*,*)'                       '
             write(*,*) 'ERROR: rotation count exceeds 20000'
-            stop
+            write(*,*)'                       '
+            write(*,*) '***************************'
+            write(*,*)'                       '
+            rotation_error=.true.
+            return
         end if 
         if(debug)write(*,*) '[Rotate wrapper] Start: length check: ',cyls(i,9),norm2(cyls(i,6:8)-cyls(i,1:3))
         center_of_gravity(1)=cyls(i,1)+(cyls(i,6)-cyls(i,1))/2
@@ -40,13 +54,18 @@ contains
         if (debug)write(*,*) 'End Point One:', cyls(i,1:3)
         if (debug)write(*,*) 'End Point Two:', cyls(i,6:8)
         if (rotation_count(i,1).eq.5000.or.rotation_count(i,1).eq.10000) then  
-            cyl_diff=cyls(i,6:8)-cyls(i,1:3)    
-            cyls(i,1)=cyls(i,1)+cyl_diff(1)
-            cyls(i,2)=cyls(i,2)+cyl_diff(2)
-            cyls(i,3)=cyls(i,3)+cyl_diff(3)
-            cyls(i,6)=cyls(i,6)+cyl_diff(1)
-            cyls(i,7)=cyls(i,7)+cyl_diff(2)
-            cyls(i,8)=cyls(i,8)+cyl_diff(3)
+            cyl_diff=cyls(i,6:8)-cyls(i,1:3)   
+            write(*,*)'[Rotate wrapper] End Point1',cyls(i,1:3)
+            write(*,*)'End Point2',cyls(i,6:8) 
+            cyls(i,1)=cyls(i,1)+10.0
+            cyls(i,2)=cyls(i,2)+10.0
+            cyls(i,3)=cyls(i,3)+box
+            cyls(i,6)=cyls(i,6)+10.0
+            cyls(i,7)=cyls(i,7)+10.0
+            cyls(i,8)=cyls(i,8)+box
+            write(*,*)'End Point1',cyls(i,1:3)
+            write(*,*)'End Point2',cyls(i,6:8)
+            return
             !cyls(i,6:8)=cyls(i,6:8)+(cyls(i,6:8)-cyls(i,1:3))
             if (debug) write(*,*)'Shifting center of gravity'
             if (debug)write(*,*) 'End Point One:', cyls(i,1:3)
@@ -60,6 +79,7 @@ contains
             cyls(i,6)=cyls(i,6)+0.1*cyl_diff(1)
             cyls(i,7)=cyls(i,7)+0.1*cyl_diff(2)
             cyls(i,8)=cyls(i,8)+0.1*cyl_diff(3)
+            return
             if (debug) write(*,*)'Shifting center of gravity'
             if (debug)write(*,*) 'End Point One:', cyls(i,1:3)
             if (debug)write(*,*) 'End Point Two:', cyls(i,6:8)
@@ -151,7 +171,7 @@ subroutine rotate_beck(r,qq,p,q,rp,p_uvec,pmag,qmag,center_of_gravity,debug)
     if ((length_original.lt.length_original-lenght_tol).or. &
     (length_original.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] Start: length =", length_original
-        read(*,*)
+        !read(*,*)
     endif
     !Define the translation and inverse translation 
     T=0.0
@@ -277,7 +297,7 @@ if ((axis(1).ne.1.0)) then
         length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] first dir Rx: length =", length
-            read(*,*)
+            !read(*,*)
         endif  
 endpoint_one=matmul(Ry,endpoint_one)
 endpoint_two=matmul(Ry,endpoint_two)
@@ -295,7 +315,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] first dir Ry: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 end if
 endpoint_one=matmul(Rz,endpoint_one)
@@ -309,7 +329,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] first dir Rz: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 end if
 endpoint_one=matmul(Ry_inv,endpoint_one)
@@ -323,7 +343,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] first dir Ry Inv: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 end if
 if (.not.align) then 
@@ -338,7 +358,7 @@ if (.not.align) then
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck]first dir Rx Inv: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 end if
 end if
@@ -353,7 +373,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] first dir Final: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 endif
 if (debug) write(*,*)'New'
@@ -380,7 +400,7 @@ if(CoG(3).lt.center_of_gravity(3))then
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
         write(*,*)"[Rotate Beck] wrong dir begin: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 endif
     if (debug) write(*,*)'[Rotate_beck] endpoint_two',endpoint_two(1:3)
@@ -394,7 +414,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Translate to origin: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     if (debug) write(*,*)'Translated'
@@ -442,7 +462,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     endpoint_one=matmul(Ry,endpoint_one)
@@ -461,7 +481,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     endpoint_one=matmul(Rz_neg,endpoint_one)
@@ -471,7 +491,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     if (debug) write(*,*)'Rz_neg'
@@ -484,7 +504,7 @@ endif
         if (debug)then
             if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
                 write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-                read(*,*)
+                !read(*,*)
             endif
         endif
     if (debug) write(*,*)'Ry inv'
@@ -506,7 +526,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     endpoint_one=matmul(T_inv,endpoint_one)
@@ -516,7 +536,7 @@ endif
     if (debug)then
         if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original+lenght_tol))then
             write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-            read(*,*)
+            !read(*,*)
         endif
     endif
     if (debug) write(*,*)'Translated Inv'
@@ -531,7 +551,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if (debug)then
     if ((length.lt.length_original-lenght_tol).or.(length.gt.length_original-lenght_tol))then
         write(*,*)"[Rotate Beck] wrong dir Rotate in x: length =", length
-        read(*,*)
+        !read(*,*)
     endif
 endif
 if((length.lt.9.9999))then
@@ -542,7 +562,7 @@ length=norm2((endpoint_one(1:3)-endpoint_two(1:3)))
 if ((length.lt.length_original-lenght_tol).or. &
 (length.gt.length_original+lenght_tol))then
     write(*,*)"[Rotate Beck] FINAL: length =", length
-    read(*,*)
+    !read(*,*)
 endif
 p(1,1:3)=endpoint_one(1:3)
 p(2,1:3)=endpoint_two(1:3)

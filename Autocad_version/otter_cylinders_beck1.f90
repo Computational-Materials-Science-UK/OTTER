@@ -16,7 +16,7 @@ program cylinders_place
     real(kind=8),dimension(2) ::bigbox,smallbox
     real(kind=8),dimension(3)::r,distance_cyls,unit_cyls
     real(kind=8),dimension(3,3)::pq
-    logical::debug,in_box,contact,test,try,input,small_box
+    logical::debug,in_box,contact,test,try,input,small_box,rotation_error
     integer::num_models,cylinder_num,out_unit=51,model,i,j,jj,indx(2),n,onenn,l,x,cont_i,m
     integer::periodic_i,periodic_j,periodic_added,preserve_cylinder_num
     real(kind=8)::box, box_input,min_rad,max_rad,buffer,min_length,max_length,radius_range,length_range
@@ -59,8 +59,8 @@ program cylinders_place
         call get_input(geocode,num_models,out_name,path,box,min_rad,max_rad,buffer,min_length,max_length,cylinder_num,lig_edge)
     else
         
-        num_models=1
-        out_name='test_'
+        num_models=100
+        out_name='cut_box_28_'
         path='./'
         box=30
         min_rad=5.d-1
@@ -116,8 +116,9 @@ program cylinders_place
     allocate(nn(cylinder_num,2,8))
    
     call date_and_time(values=values)
-    ! values=(/2020, 2, 7, -300, 17, 0, 34, 743/)
+     !values=(/2020, 5, 4, -240, 13, 10, 35, 71/)
      !write(*,*)values
+     !read(*,*)
     call srand(values(8))
 
     radius_range=max_rad-min_rad
@@ -127,11 +128,12 @@ program cylinders_place
     preserve_cylinder_num = cylinder_num
     box_input = box
     !Begin building structures, one model at a timee...
-    do model=1,num_models
+    do model=23,num_models
         write(*,*) 'Model #',model,'...'
         write(num_char,"(i4)") model !cast a four character version of the model number
         write(*,*)'num_char',num_char
         if (debug) write(*,*)'Number of cylinders', cylinder_num
+        rotation_error=.false.
         !Full script (i.e generates one script with info for every model)
         
         full_name=trim(out_name)//trim(adjustl(num_char))
@@ -259,6 +261,9 @@ program cylinders_place
                     nn_count(i,cont_i)=i_num(cont_i)
                 end do
                 r=contact_pt(1,:)
+                
+                    
+                
 !!!End
 !                if (debug) then
 !                    write(*,*)'Re-entered program cylinders place from contacts'
@@ -290,8 +295,21 @@ program cylinders_place
                         nn_count(i,1)=0
                     else !rotate!!
                         if(debug)write(*,*) '[Main] Pre-rotation length check: ',cyls(i,9),norm2(cyls(i,6:8)-cyls(i,1:3))
-                        CALL otter_cyl_rotate_wrapper(r,cyls,i,nn_count,i_pt(1,:),rotation_count)
+                        if (rotation_count(i,1).eq.5000)then
+                            write(*,*)'CONTACT POINT 5000',r
+                            write(*,*)'End Point1 5000',cyls(i,1:3)
+                            write(*,*)'End Point2',cyls(i,6:8)
+                            end if
+                            if (rotation_count(i,1).gt.19997)then
+                                write(*,*)'CONTACT POINT 19000 ',r
+                                write(*,*)'End Point1',cyls(i,1:3)
+                                write(*,*)'End Point2',cyls(i,6:8)
+                            end if
+                        CALL otter_cyl_rotate_wrapper(r,cyls,i,nn_count,i_pt(1,:),rotation_count,box,rotation_error)
                         if(debug)write(*,*) ' Out of Rotate: '
+                        if (rotation_error)then
+                            exit
+                        end if
                         !read(*,*)
 
 !                       CALL contacts(i,j,k,cylinder_num,debug,spheres,cyls,nn_count,nn,r,d,p,q,contact,pr,qr,pq,buffer)
@@ -316,7 +334,9 @@ program cylinders_place
 
                     end if
                 end do !rotate
-
+                if (rotation_error)then
+                    exit
+                end if
                 if ((nn_count(i,1) .eq. 0) .and. (cyls(i,3) .gt. 0) .and. (cyls(i,8) .gt. 0)) then
                     if (nn_count(i,2) .ne. 0) then
                         write(*,*) 'Error in Drop/Rotate/Contacts'
@@ -331,6 +351,11 @@ program cylinders_place
                     if(debug)write(*,*) 'Cylinder Drop: ',cyls(i,3),cyls(i,8)
                 endif
             enddo !drop loop?
+            if (rotation_error)then
+                write(*,*)'[Main] File error:',model ,'Press Enter to continue'
+                read(*,*)
+                exit
+            end if
 if (input) close(unit=16)
 !Check if it's above the box.
             if ((cyls(i,3) .gt. box_range+max_rad) .and. (cyls(i,8) .gt. box_range+max_rad)) then
