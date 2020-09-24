@@ -368,7 +368,7 @@ module otter_math
         !    John Burkardt
         !
 
-    subroutine segments_dist_3d ( p1, p2, q1, q2, dist, pn, qn )
+    subroutine segments_dist_3d ( p1, p2, q1, q2, dist, pn, qn, sn, tn )
 
         !  Parameters:
         !

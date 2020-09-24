@@ -12,7 +12,7 @@
 !!!
 
 !!!!!
-! otter_spheres.f90 - module providing otter_fibers structure generation version
+! otter_fibers.f90 - module providing otter_fibers structure generation version
 !	vb.1 - Working version
 !   va.2 - Sean McDaniel
 !   va.1 - Beck original with contributions from Skylar Mays
@@ -26,6 +26,8 @@ module fibers_place
 
     use otter_globals
     use otter_input
+    use otter_fibers_globals
+    use otter_math
 
     contains
 
@@ -47,6 +49,23 @@ module fibers_place
 
         !!!! Constants
         !!!! Variables
+
+        real(kind=DBL)                  ::  min_rad, max_rad, min_olp, step_size, &
+                                            big_box_vol,radius_range,length_range, &
+                                            dir_rand, min_length, max_length
+        real(kind=DBL),dimension(6)     ::  box_boundary,bigbox
+        real(kind=DBL),dimension(3)     ::  box_range, shift
+        integer                         ::  i, &
+                                            max_fibers, &
+                                            scr_unit,dat_unit,rve_scr_unit,rve_nnc_unit, &
+                                            rve,num_bad
+
+        character(len=200)              ::  full_scr_name,full_nnc_name,full_name, &
+                                            full_rves_batch_name,full_nncd_name, &
+                                            saveas,exportstl
+        character(len=50)               ::  date_time
+        character(len=8)                ::  num_char
+        logical                         ::  stopped
 
         !!!! Begin code...
 
@@ -86,14 +105,14 @@ module fibers_place
 
         !!! Allocate arrays:
         ! spheres:  sphere data for each of max_fibers spheres - nn_count is number of contacting spheres...
-        !       x-pos, y-pos, z-pos, radius, nn_count, in_box (1=yes, 0=no)
-        allocate(fibers(max_fibers,6))
+        !       end1x, end1y, end1z, rad1, end2x, end2y, end2z, radz, length
+        allocate(fibers(max_fibers,9))
 
-        ! nn:  nearest neighbor table for each of max_fibers shperes:
-        !   contact sphere number, distance, overlap distance
-        ! Each sphere in theory has 3 nn bc it falls until it touches 3..., 
-        ! NN are only detailed here for the sphere landing, though all contacts are counted in spheres(i,5)
-        allocate(nn(max_fibers,5,3))
+        ! nn:  nearest neighbor table for each of max_fibers fibers:
+        !   contact fiber number, contact_pt3D (x,y,z), separation distance
+        ! Each fiber has 2 (3 with rolling) plus those on top contacts..., 
+        allocate(contacts(max_fibers,7,5))
+        allocate(num_contacts(max_fibers))
 
         radius_range=max_rad-min_rad
         length_range=max_length-min_length
@@ -136,14 +155,14 @@ module fibers_place
 
             !initialize...
             fibers(:,:)=0.d0
-            fibers(:,6)=1.d0
-            nn(:,:,:)=0.d0
+            contacts(:,:,:)=0.d0
+            num_contacts(:)=0
             i=1
             num_bad=0
 
             radius_range=max_rad-min_rad
             length_range=max_length-min_length
-            if(debug) write(*,*) 'otter_fibers: fiber_range,length_range: ',fiber_range,length_range
+            if(debug) write(*,*) 'otter_fibers: radius_range,length_range: ',radius_range,length_range
 
             ! Main loop... create fibers until fiber maximum is exceeded or until the last 0.05*max_fibers have been bad, that is, above the big_box.
             do while ((i .le. max_fibers) .and. (num_bad .le. int(0.05*max_fibers)))
@@ -156,8 +175,8 @@ module fibers_place
                 fibers(i,4)=min_rad+rand()*radius_range
                 fibers(i,9)=min_length+rand()*length_range
                 dir_rand=rand()*PI
-                fibers(i,5)=fibers(i,5)+fibers(i,9)*cos(dir_rand)
-                fibers(i,6)=fibers(i,6)+fibers(i,9)*sin(dir_rand)
+                fibers(i,5)=fibers(i,1)+fibers(i,9)*cos(dir_rand)
+                fibers(i,6)=fibers(i,2)+fibers(i,9)*sin(dir_rand)
                 fibers(i,7)=fibers(i,3)
                 fibers(i,8)=min_rad+rand()*radius_range
 
@@ -165,18 +184,21 @@ module fibers_place
                 do while (.not. stopped)
 
                     ! Check for contacts
-                    call fiber_contact(i,min_olp)
+                    call fiber_contact(i,min_olp,max_rad)
                     if (debug) write(*,*) 'Re-entered program spheres_place from fiber_contact'
 
-                    select case (num_nn(i))
+                    select case (num_contacts(i))
                     case (0)
                         ! Drop fiber by step_size
                         fibers(i,3)=fibers(i,3)-step_size
                         fibers(i,7)=fibers(i,7)-step_size
                     case (1)
-                        fibers(i,:)=rotate_fiber(i,step_size)
+                        fibers(i,:)=fiber_rotate(i,step_size)
                     case (2)
-                        fibers(i,:)=rotate_fiber(i,step_size)
+                        !! Roll/slide not yet implemented!
+                        !fibers(i,:)=rotate_fiber(i,step_size)
+                        if (debug) write(out_unit,*) ' Stopped...'
+                        stopped=.true.
                     case default
                         ! Kludge here... in theory, there could be three contacts and fiber could still roll... this should be rare...
                         if (debug) write(out_unit,*) ' Stopped...'
@@ -194,28 +216,84 @@ module fibers_place
 
     end subroutine otter_fibers
 
-    function fiber_rotate(i,step_size) return(new_pos)
-        implicit None
+    function fiber_rotate(i,step_size) result(new_pos)
+        implicit none
 
-        use otter_globals
-        use otter_fibers_globals
-        use otter_math
+        ! Declare calling parameters:
+        integer, intent(in)             :: i
+        real(kind=DBL),intent(in)       :: step_size
 
+        !Declare local variables
+        real(kind=DBL),dimension(3)     :: axis
+        real(kind=DBL),dimension(9)     :: new_pos
+        real(kind=DBL),dimension(2,3)   :: end_pt,new_end_pt
+        real(kind=DBL),dimension(2)     :: length
+        real(kind=DBL),dimension(3,3)   :: R
+        real(kind=DBL)                  :: theta
+        integer                         :: direction
 
+        if(debug) write(out_unit,*) 'fiber_rotate SUBROUTINE: ',i,fibers(i,:)
 
+        ! We will rotate the vectors from the contact pt to the fiber axis end points
+        end_pt(1,1:3)=fibers(i,1:3)-contacts(i,1,2:4)
+        end_pt(2,1:3)=fibers(i,5:7)-contacts(i,1,2:4)
+
+        ! Kludge, use distance from contact on surface to center line end as length
+        length(:)=norm2(end_pt(:,1:3))
+
+        ! Get the theta and axis of rotation...
+        ! The axis is the vec perp to the plane containing the contacting fiber axis & (0,0,1)
+        axis(:)=cross3([end_pt(2,1:3)-end_pt(1,1:3)],[0.d0,0.d0,1.d0])
+
+        ! Set rotation direction and max step towards longer end...
+        direction=2
+        if (length(1) .ge. length(2)) direction=1
+        theta=step_size/length(direction)
+
+        ! normalize axis so ax2om keeps vector length constant...
+        axis=axis/norm2(axis)
+
+        ! Compute rotation matrix
+        R=ax2om_d([axis(1:3),theta])
+
+        ! move end pt that should go down, check, reverse if necessary, move other pt
+        new_end_pt(direction,:)=matmul(R,end_pt(direction,:))+contacts(i,1,2:4)
+        if (new_end_pt(direction,3) .ge. end_pt(direction,3)) then
+            theta=0.d0-theta
+            R=ax2om_d([axis(1:3),theta])
+            new_end_pt(direction,:)=matmul(R,end_pt(direction,:))+contacts(i,1,2:4)
+        end if
+        new_end_pt(mod(direction,2)+1,:)=matmul(R,end_pt(mod(direction,2)+1,:))+contacts(i,1,2:4)
+
+        new_pos(1:3)=new_end_pt(1,1:3)
+        new_pos(4)=fibers(i,4)
+        new_pos(5:7)=new_end_pt(2,1:3)
+        new_pos(8:9)=fibers(i,8:9)
 
     end function fiber_rotate
 
 
-    subroutine fiber_contact(i,min_olp,contact,contact_pt3D)
-        implicit none 
-
+    subroutine fiber_contact(i,min_olp,max_rad)
+        
         use otter_globals
         use otter_fibers_globals
         use otter_math
+        implicit none 
 
-        num_nn(i)=0
-        nn_list(i,:)=0
+        !Declare calling parameters
+        integer, intent(in) :: i
+        real(kind=DBL),intent(in) :: min_olp,max_rad
+
+        !Declare local variables
+        real(kind=DBL), dimension(3)    :: contact_vec,contact_pt3D
+        real(kind=DBL), dimension(2)    :: radius,near_ptP
+        real(kind=DBL), dimension(2,3)  :: near_pt3D,fiber_vec,face_vec
+        real(kind=DBL)                  :: dist
+        integer                         :: j,k
+        logical                         :: contact
+
+        num_contacts(i)=0
+        contacts(i,:,:)=0
 
         ! Check gross contact
         do j=1,i-1
@@ -229,9 +307,10 @@ module fibers_place
             if (contact) then
                 contact=.false.
                 ! rounded end approximation...
-                call segments_dist_3d(fibers(i,1:3),fibers(i,5:7),fibers(j,1:3),fibers(j,5:7),dist,near_ptP(1), near_ptP(2))
-                near_pt3D(1,:)=fibers(i,1:3)+near_ptP(1)*(fibers(i,5:7)-fibers(i,1:3))
-                near_pt3D(2,:)=fibers(j,1:3)+near_ptP(2)*(fibers(j,5:7)-fibers(j,1:3))
+                call segments_dist_3d(fibers(i,1:3),fibers(i,5:7),fibers(j,1:3),fibers(j,5:7), &
+                                      dist,near_pt3D(1,:), near_pt3D(2,:), near_ptP(1), near_ptP(2))
+                !near_pt3D(1,:)=fibers(i,1:3)+near_ptP(1)*(fibers(i,5:7)-fibers(i,1:3))
+                !near_pt3D(2,:)=fibers(j,1:3)+near_ptP(2)*(fibers(j,5:7)-fibers(j,1:3))
                 contact_vec(:)=near_pt3D(2,:)-near_pt3D(1,:)
                 fiber_vec(1,:)=near_pt3D(1,:)-(fibers(i,5:7)+near_ptP(1)*(fibers(i,1:3)-fibers(i,5:7)))
                 fiber_vec(2,:)=near_pt3D(2,:)-(fibers(j,5:7)+near_ptP(2)*(fibers(j,1:3)-fibers(j,5:7)))
@@ -241,12 +320,15 @@ module fibers_place
                     face_vec(1,:)=contact_vec(:)-dotn(contact_vec(:),fiber_vec(1,:)/norm2(fiber_vec(1,:)))
                     if ((near_ptP(2) .eq. 0.d0) .or. (near_ptP(2) .eq. 1.d0)) then
                         ! end-to-end : Check if proj of contact in each face is less than radii...
-                        face_vec(2,:)=([0.d0,0.d0,0.d0]-contact_vec(:))-dotn(([0.d0,0.d0,0.d0]-contact_vec(:)),fiber_vec(2,:)/norm2(fiber_vec(2,:)))
+                        face_vec(2,:) = ([0.d0,0.d0,0.d0] - contact_vec(:)) - &
+                                         dotn(([0.d0,0.d0,0.d0] - contact_vec(:)), &
+                                         fiber_vec(2,:)/norm2(fiber_vec(2,:)))
                         ! kludge here... overlap is more than min_olp becuase it's applied to both face_vecs...
                         if ((norm2(face_vec(1,:)) .lt. radius(1)-min_olp) .and. (norm2(face_vec(2,:)) .lt. radius(2)-min_olp)) then
                             ! end-to-end contact
                             contact=.true.
-                            contact_pt3D(:)=0.5*contact_vec(:)-dotn(0.5*contact_vec(:),fiber_vec(1,:)/norm2(fiber_vec(1,:)))+near_pt3D(1,:)
+                            contact_pt3D(:)=0.5*contact_vec(:)-dotn(0.5*contact_vec(:), &
+                                            fiber_vec(1,:)/norm2(fiber_vec(1,:)))+near_pt3D(1,:)
                         end if
                     else
                         ! end-to-side : Check if edge point of i is within radius of j.
@@ -258,28 +340,32 @@ module fibers_place
                         endif
                     end if
 
-                else if ((contact_pt(2) .eq. 0.d0) .or. (contact_pt(2) .eq. 1.d0)) then
-                    ! end-to-side : Check if edge point of j is within radius of i.
+                else 
+                    if ((near_ptP(2) .eq. 0.d0) .or. (near_ptP(2) .eq. 1.d0)) then
+                        ! end-to-side : Check if edge point of j is within radius of i.
                         ! There is a small kludge here... the contact point is set to the corner of the contacted cylinder...
-                    contact_pt3D(:)=near_pt3D(2,:)+radius(2)*face_vec(2,:)/norm2(face_vec(2,:))
-                    if (pt2line(fibers(i,1:3),fibers(i,5:7),contact_pt3D(:)) .lt. radius(1)-min_olp) then
-                        ! end-to-side contact
-                        contact=.true.
-                    endif
-                else
-                    ! side-to-side contact
-                    if (dist .lt. radius(1)+radius(2)-min_olp) then
+                        contact_pt3D(:)=near_pt3D(2,:)+radius(2)*face_vec(2,:)/norm2(face_vec(2,:))
+                        if (pt2line(fibers(i,1:3),fibers(i,5:7),contact_pt3D(:)) .lt. radius(1)-min_olp) then
+                            ! end-to-side contact
+                            contact=.true.
+                        end if
+                    else
                         ! side-to-side contact
-                        contact=.true.
-                        contact_pt3D(:)=near_pt3D(1,:)+contact_vec(:)/dist*(radius(1)-0.5*(radius(1)+radius(2)-dist))
+                        if (dist .lt. radius(1)+radius(2)-min_olp) then
+                            ! side-to-side contact
+                            contact=.true.
+                            contact_pt3D(:)=near_pt3D(1,:)+contact_vec(:)/dist*(radius(1)-0.5*(radius(1)+radius(2)-dist))
+                        end if
                     end if
                 end if
 
             end if ! end fine check
 
             if (contact) then
-                num_nn(i)=num_nn(i)+1
-                nn_list(i,num_nn(i))=j
+                num_contacts(i)=num_contacts(i)+1
+                contacts(i,num_contacts(i),1)=j
+                contacts(i,num_contacts(i),2:4)=contact_pt3D(:)
+                contacts(i,num_contacts(i),5)=dist
             end if
 
         end do
