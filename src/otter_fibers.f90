@@ -56,7 +56,7 @@ module fibers_place
                                             max_height
         real(kind=DBL),dimension(6)     ::  box_boundary,bigbox
         real(kind=DBL),dimension(3)     ::  box_range, shift
-        integer                         ::  i,j, periodic_added, periodic_j, periodic_i, &
+        integer                         ::  i,j,k, periodic_added, periodic_j, periodic_i, &
                                             max_fibers, &
                                             scr_unit,dat_unit,rve_scr_unit,rve_nnc_unit, &
                                             rve,num_bad,excess_num
@@ -66,7 +66,7 @@ module fibers_place
                                             saveas,exportstl
         character(len=50)               ::  date_time
         character(len=8)                ::  num_char
-        logical                         ::  stopped
+        logical                         ::  stopped, in_box
 
         !!!! Begin code...
 
@@ -96,7 +96,7 @@ module fibers_place
             big_box_vol=big_box_vol*box_range(i)
         end do
         ! Estimate max number of fibers as 3*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
-        max_fibers=int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
+        max_fibers=3*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
         ! set up for periodic images
         max_fibers=9*max_fibers
         write(out_unit,*) ''
@@ -174,7 +174,7 @@ module fibers_place
             excess_num=1000000
             if(debug) write(out_unit,*) 'excess_num: ', excess_num
             do while ((i .lt. max_fibers) .and. (num_bad .le. excess_num))
-                if (debug) write(out_unit,'(i3,a4,i7)',ADVANCE='NO') i,'... ',max_fibers
+                if (.true.) write(out_unit,'(i3,a4,i7)',ADVANCE='NO') i,'... '
 
                 ! randomly place a fiber above box
                 fibers(i,1)=rand()*box_range(1)+shift(1)
@@ -207,7 +207,7 @@ module fibers_place
                         !! Roll/slide not yet implemented!
                         !fibers(i,:)=rotate_fiber(i,step_size)
                         if (debug) write(out_unit,*) ' Stopped...'
-                        write(*,*) ' Stopped with two contacts!'
+                        !write(*,*) ' Stopped with two contacts!'
                         !read(*,*)
                         stopped=.true.
                     case default
@@ -219,7 +219,7 @@ module fibers_place
                     ! Check if reached bottom
                     if ((fibers(i,3) .le. 0.d0) .or. (fibers(i,7) .le. 0.d0)) then
                         stopped=.true.
-                        write(*,*) 'Stopped by touching bottom...'
+                        !write(*,*) 'Stopped by touching bottom...'
                     end if
 
                 end do ! dropping loop
@@ -273,8 +273,18 @@ module fibers_place
             write(scr_unit,'(a)') '_zoom -300,-300,-300 500,500,500'
 
             do j=1,i-1
-                write(scr_unit,203) fibers(j,1:4),fibers(j,8),fibers(j,5:7)
+
+                ! Check whether fiber has a least one end in box...
+                in_box=.true.
+                do k=1,3
+                    if ( (min(fibers(j,k),fibers(j,k+4)) .gt. box_range(k)) .or. &
+                         (max(fibers(j,k),fibers(j,k+4)) .lt. 0.d0) ) in_box=.false.
+                end do
+
+                ! If in the box, write to script...
+                if (in_box) write(scr_unit,203) fibers(j,1:4),fibers(j,8),fibers(j,5:7)
             end do
+
             write(scr_unit,'(a)') '_union all '
             write(scr_unit,'(a)') '_group create network  all '
 
@@ -326,13 +336,14 @@ module fibers_place
         real(kind=DBL),intent(in)       :: step_size
 
         !Declare local variables
-        real(kind=DBL),dimension(3)     :: axis
+        real(kind=DBL),dimension(3)     :: axis,fiber_dir
         real(kind=DBL),dimension(9)     :: new_pos
         real(kind=DBL),dimension(2,3)   :: end_pt,new_end_pt
         real(kind=DBL),dimension(2)     :: length
         real(kind=DBL),dimension(3,3)   :: R,Rold
         real(kind=DBL)                  :: theta
         integer                         :: direction
+        logical                         :: drop_out
 
         if(debug) write(out_unit,*) 'fiber_rotate SUBROUTINE: ',i,fibers(i,:)
         ! Check for vertical...
@@ -342,6 +353,14 @@ module fibers_place
             new_end_pt(2,1:2)=fibers(i,5:6)
             new_end_pt(1,3)=fibers(i,3)-step_size
             new_end_pt(2,3)=fibers(i,7)-step_size
+
+            ! If activated, just drop fiber out of box....
+            drop_out=.true.
+            if (drop_out) then
+                new_end_pt(1,3)=new_end_pt(1,3) - 100000
+                new_end_pt(2,3)=new_end_pt(2,3) - 100000
+                write(*,*) ' Dropping OUT!'
+            end if
         else
 
             ! We will rotate the vectors from the contact pt to the fiber axis end points
@@ -351,7 +370,6 @@ module fibers_place
             ! Kludge, use distance from contact on surface to center line end as length
             length(1)=norm2(end_pt(1,1:3))
             length(2)=norm2(end_pt(2,1:3))
-            
 
             ! Get the theta and axis of rotation...
             ! The axis is the vec perp to the plane containing the contacting fiber axis & (0,0,1)
@@ -361,6 +379,14 @@ module fibers_place
             direction=2
             if (length(1) .ge. length(2)) direction=1
             theta=step_size/length(direction)
+
+            ! Check if contact point is near the middle, then shift...
+            fiber_dir(1:3)=fibers(i,1+2*direction:3+2*direction)/fibers(i,9)
+            if (abs(length(1)-length(2)) .lt. 2.d0*step_size) then
+                end_pt(1,1:3)=end_pt(1,1:3)+2.d0*step_size*fiber_dir(1:3)
+                end_pt(2,1:3)=end_pt(2,1:3)+2.d0*step_size*fiber_dir(1:3)
+                if (.true.) write (*,*) ' Shifting due to middle contact: ',fiber_dir
+            end if
 
             !write(*,*) 'Length (long, short): ', direction, length(direction), length(mod(direction,2)+1)
             !write(*,*) 'Fibers end1:         ',fibers(i,1:3)
@@ -389,11 +415,15 @@ module fibers_place
                 write(*,*) ' ROTATE ERROR!',theta
                 !write(*,*) R 
                 !write(*,*) Rold
-                write(*,*) ' Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)
+                write(*,*) ' Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)+contacts(i,1,2:4)
                 read(*,*)
             end if
             new_end_pt(mod(direction,2)+1,:)=matmul(R,end_pt(mod(direction,2)+1,:))+contacts(i,1,2:4)
+            !write(*,*) ' Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)+contacts(i,1,2:4)
 
+            ! This makes it more "slide" over contact then just rotate...
+            new_end_pt(1,:)=new_end_pt(1,:)+step_size*fiber_dir(1:3)
+            new_end_pt(2,:)=new_end_pt(2,:)+step_size*fiber_dir(1:3)
             
             if (length(1)+length(2) .gt. 55) read (*,*)
 
