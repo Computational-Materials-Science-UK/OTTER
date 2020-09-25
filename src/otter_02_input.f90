@@ -39,6 +39,7 @@ module otter_input
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !! Variables & Constants
 
+
         if (debug) write(*,*) ' In otter_input:get_gen_input'
 
         write (out_unit,*) ' How many RVEs do you want to build? '

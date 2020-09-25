@@ -380,11 +380,16 @@ module otter_math
         implicit none
         
         integer, parameter                 :: dim_num = 3
+        integer                            :: close, i
         real(kind=DBL)                     :: a,b,c,d,e
         real(kind=DBL)                     :: det
-        real(kind=DBL)                     :: dist,dist2
-        real(kind=DBL), dimension(dim_num) :: p1,p2,pn,q1,q2,qn,u,v,w0
-        real(kind=DBL)                     :: sn, tn
+        real(kind=DBL), intent(out)        :: dist
+        real(kind=DBL), dimension(dim_num),intent(in)  :: p1,p2,q1,q2
+        real(kind=DBL), dimension(dim_num),intent(out) ::   pn,qn
+        real(kind=DBL), dimension(dim_num) :: u,v,w0
+        real(kind=DBL), intent(out)        :: sn, tn
+        real(kind=DBL), dimension(4)       :: un, dist2
+        real(kind=DBL), dimension(4,3)     :: rn
 
         !  The lines are identical.
         !  THIS CASE NOT SET UP YET
@@ -458,14 +463,46 @@ module otter_math
         end if
         !  The nearest point did not occur in the interior.
         !  Therefore it must be achieved at an endpoint.
-        call segment_point_dist_3d ( q1, q2, p1, dist2 )
-        dist = dist2
-        call segment_point_dist_3d ( q1, q2, p2, dist2 )
-        dist = min ( dist, dist2 )
-        call segment_point_dist_3d ( p1, p2, q1, dist2 )
-        dist = min ( dist, dist2 )
-        call segment_point_dist_3d ( p1, p2, q2, dist2 )
-        dist = min ( dist, dist2 )
+        !pn, qn, sn, tn 
+        !ppn, ssn
+
+        !write(*,*) ' SEGMENT: Endpt contact....'
+        ! case qn, p1
+        call segment_point_dist_3d ( q1, q2, p1, dist2(1), rn(1, 1:3), un(1) )
+        !case qn, p2
+        call segment_point_dist_3d ( q1, q2, p2, dist2(2), rn(2, 1:3), un(2) )
+        !case pn, q1
+        call segment_point_dist_3d ( p1, p2, q1, dist2(3), rn(3, 1:3), un(3) )
+        !case pn, q2
+        call segment_point_dist_3d ( p1, p2, q2, dist2(4), rn(4, 1:3), un(4) )
+
+        close=1
+        do i=2,4
+            if (dist2(i) .lt. dist2(close)) close=i
+        end do
+        
+        dist=dist2(close)
+        if (close .lt. 3) then
+            qn(1:dim_num)=rn(close,1:3)
+            tn=un(close)
+            if (close .eq. 1) then
+                pn(1:dim_num)=p1(1:dim_num)
+                sn=0.d0
+            else
+                pn(1:dim_num)=p2(1:dim_num) 
+                sn=1.d0
+            end if
+        else
+            pn(1:dim_num)=rn(close,1:3)
+            sn=un(close)
+            if (close .eq. 3) then
+                qn=q1(1:dim_num)
+                tn=0.d0
+            else
+                qn=q2(1:dim_num) 
+                tn=1.d0
+            end if
+        end if
         
         return
     end
@@ -498,7 +535,7 @@ module otter_math
         !    John Burkardt
         !
 
-    subroutine segment_point_dist_3d ( p1, p2, p, dist )
+    subroutine segment_point_dist_3d ( p1, p2, p, dist, pn, t )
         !  Parameters:
         !
         !    Input, real(kind=DBL) P1(3), P2(3), the endpoints of the segment.
