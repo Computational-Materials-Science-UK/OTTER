@@ -95,8 +95,8 @@ module fibers_place
         do i=1,3
             big_box_vol=big_box_vol*box_range(i)
         end do
-        ! Estimate max number of fibers as 3*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
-        max_fibers=3*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
+        ! Estimate max number of fibers as 4*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
+        max_fibers=4*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
         ! set up for periodic images
         max_fibers=9*max_fibers
         write(out_unit,*) ''
@@ -174,7 +174,7 @@ module fibers_place
             excess_num=1000000
             if(debug) write(out_unit,*) 'excess_num: ', excess_num
             do while ((i .lt. max_fibers) .and. (num_bad .le. excess_num))
-                if (.true.) write(out_unit,'(i3,a4,i7)',ADVANCE='NO') i,'... '
+                if (.true.) write(out_unit,'(i5,a4)',ADVANCE='NO') i,'... '
 
                 ! randomly place a fiber above box
                 fibers(i,1)=rand()*box_range(1)+shift(1)
@@ -260,7 +260,7 @@ module fibers_place
 
             ! Check if sphere_num was too low...
             if (num_bad .le. excess_num) then
-                write(out_unit,*) ' RAN OUT of FIBERS!  max_fibers too low, and probably other problems.'
+                write(out_unit,*) ' WARNING: excess_num not well selected - not a critical error.'
                 !stop
             end if
 
@@ -354,7 +354,7 @@ module fibers_place
             new_end_pt(1,3)=fibers(i,3)-step_size
             new_end_pt(2,3)=fibers(i,7)-step_size
 
-            ! If activated, just drop fiber out of box....
+            ! If this is turn on (drop_out=.true.), then vertical fibers are just dropped out of box.... warning is printed to the screen.
             drop_out=.true.
             if (drop_out) then
                 new_end_pt(1,3)=new_end_pt(1,3) - 100000
@@ -380,7 +380,7 @@ module fibers_place
             if (length(1) .ge. length(2)) direction=1
             theta=step_size/length(direction)
 
-            ! Check if contact point is near the middle, then shift...
+            ! Check if contact point is near the middle, then shift... Warning printed...
             fiber_dir(1:3)=fibers(i,1+2*direction:3+2*direction)/fibers(i,9)
             if (abs(length(1)-length(2)) .lt. 2.d0*step_size) then
                 end_pt(1,1:3)=end_pt(1,1:3)+2.d0*step_size*fiber_dir(1:3)
@@ -405,27 +405,38 @@ module fibers_place
             ! move end pt that should go down, check, reverse if necessary, move other pt
             new_end_pt(direction,:)=matmul(R,end_pt(direction,:))+contacts(i,1,2:4)
             if (new_end_pt(direction,3) .ge. end_pt(direction,3)+contacts(i,1,4)) then
+                ! Reverse rotation by inverted rotation axis to keep theta positive
                 axis=[0.d0,0.d0,0.d0]-axis
-                if (debug) write(*,*) 'new theta:             ',theta
+                if (debug) write(*,*) 'new theta: ',theta
                 Rold=R
                 R=ax2om_d([axis(1:3),theta])
                 new_end_pt(direction,:)=matmul(R,end_pt(direction,:))+contacts(i,1,2:4)
             end if
             if (new_end_pt(direction,3) .ge. end_pt(direction,3)+contacts(i,1,4)) then
-                write(*,*) ' ROTATE ERROR!',theta
+                write(*,*) ' ROTATE ERROR! No rotation lowers long end.'
+                write(*,*) '   Likely fatal, quit code and notify OTTERMaster.',theta
                 !write(*,*) R 
                 !write(*,*) Rold
-                write(*,*) ' Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)+contacts(i,1,2:4)
+                write(*,*) '   Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)+contacts(i,1,2:4)
                 read(*,*)
             end if
             new_end_pt(mod(direction,2)+1,:)=matmul(R,end_pt(mod(direction,2)+1,:))+contacts(i,1,2:4)
             !write(*,*) ' Fiber new, old: ',new_end_pt(direction,:),end_pt(direction,:)+contacts(i,1,2:4)
 
-            ! This makes it more "slide" over contact then just rotate...
+            ! This is more "sliding" over contact then just rotating, address contact point drift...
+            ! This is not the actual drift just an estimate... fiber is sliding towards longer end.
             new_end_pt(1,:)=new_end_pt(1,:)+step_size*fiber_dir(1:3)
             new_end_pt(2,:)=new_end_pt(2,:)+step_size*fiber_dir(1:3)
             
-            if (length(1)+length(2) .gt. 55) read (*,*)
+            ! Check for broken-ness in finding/incorporating contact point.
+            if (length(1)+length(2) .gt. 55) then
+                write(*,*) ' ROTATE ERROR! Length doesn''match up...'
+                write(*,*) '   Likely fatal, quit code and notify OTTERMaster.'
+                write(*,*) ' end_pts, contact: ',end_pt(1,1:3)
+                write(*,*) '                   ',end_pt(2,1:3)
+                write(*,*) '                   ',contacts(i,1,2:4)
+                read(*,*)
+            end if
 
         end if
 
