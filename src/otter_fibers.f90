@@ -50,43 +50,49 @@ module fibers_place
         !!!! Constants
         !!!! Variables
 
-        real(kind=DBL)                  ::  min_rad, max_rad, min_olp, step_size, &
+        real(kind=DBL)                  ::  min_rad, max_rad, &
                                             big_box_vol,radius_range,length_range, &
                                             dir_rand, min_length, max_length, height, &
-                                            max_height
+                                            max_height, friction
         real(kind=DBL),dimension(6)     ::  box_boundary,bigbox
         real(kind=DBL),dimension(3)     ::  box_range, shift
         integer                         ::  i,j,k, periodic_added, periodic_j, periodic_i, &
-                                            max_fibers, &
+                                            max_fibers, go_glide, &
                                             scr_unit,dat_unit,rve_scr_unit,rve_nnc_unit, &
-                                            rve,num_bad,excess_num
+                                            rve,num_bad,excess_num,glide_num
 
         character(len=200)              ::  full_scr_name,full_nnc_name,full_name, &
                                             full_rves_batch_name,full_nncd_name, &
                                             saveas,exportstl
         character(len=50)               ::  date_time
         character(len=8)                ::  num_char
-        logical                         ::  stopped, in_box
+        logical                         ::  stopped, in_box, glide_in
+        logical,dimension(2)            ::  stop_glide
+        logical,parameter               ::  test_glide=.TRUE. ! Set TRUE to test... must be false for real structures!
 
         !!!! Begin code...
 
         write (out_unit,*) ' Welcome to Fibers vb.1!'
         write (out_unit,*) ' '
 
+        if (test_glide) then
+            write(*,*) ' *****WARNING*****'
+            write(*,*) ' You are running the test_glide version, see otter_fibers'
+            read(*,*)
+        end if
+
         ! Get Global/General input, see otter_input
         call get_gen_input()
 
-        ! Get spheres input...
-        write(out_unit,*) ' Minimum and maximum fiber radii? '
-        read(in_unit,*) min_rad, max_rad
-        write(out_unit,*) ' Minimum and maximum fiber length? '
-        read(in_unit,*) min_length, max_length
-        write(out_unit,*) ' Minimum overlap distance? '
-        read(in_unit,*) min_olp
-        write(out_unit,*) ' Step size for moving fibers? '
-        read(in_unit,*) step_size
-        write(out_unit,*) ' Box dimensions (x, y, z): '
-        read(in_unit,*) box_range(1:3)
+        ! Get fiber specific input...
+        call get_fibers_input(min_rad, max_rad, min_length, max_length, friction, glide_num)
+
+        ! Adjust inputs...
+        glide_in=.false.
+        if (glide_num .eq. 1) glide_in=.true.
+        friction=asin(friction/360.d0*2.d0*PI)
+        if (debug) write (out_unit,*) ' Friction in absolute z: ',friction
+        box_range(1:3)=box_length(1:3)
 
         ! compute 'big box' lengths, volume; shift origin of cut box to (0,0,0)
         big_box_vol=1.d0
@@ -190,10 +196,13 @@ module fibers_place
 
                 ! Drop fiber until contact, or hits bottom.
                 stopped=.false.
+                ! Enabling gliding for this fiber.
+                stop_glide(:)=(.not. glide_in)
+                if (debug) write(out_unit,*) 'stop_glide: ',stop_glide(:)
                 do while (.not. stopped)
 
                     ! Check for contacts
-                    call fiber_contact(i,min_olp,max_rad)
+                    call fiber_contact(i,max_rad)
                     if (debug) write(*,*) 'Re-entered program spheres_place from fiber_contact'
 
                     select case (num_contacts(i))
@@ -204,22 +213,38 @@ module fibers_place
                     case (1)
                         fibers(i,:)=fiber_rotate(i,step_size)
                     case (2)
-                        !! Roll/slide not yet implemented!
-                        !fibers(i,:)=rotate_fiber(i,step_size)
-                        if (debug) write(out_unit,*) ' Stopped...'
-                        !write(*,*) ' Stopped with two contacts!'
-                        !read(*,*)
-                        stopped=.true.
+                        if (.not. (stop_glide(1) .and. stop_glide(2))) then
+                            if (.true.) write(out_unit,*) ' Gliding!...'
+                            fibers(i,:)=fiber_glide(i,step_size,friction,stop_glide)
+                            if (debug) write(out_unit,*) ' Returned from gliding w/ stop_glide: ',stop_glide
+
+                            ! IF test glide is enabled, stop after first glided fiber...
+                            if (stop_glide(1) .and. stop_glide(2)) then
+                                stopped=.true.
+                                if (.true.) write(out_unit,*) ' Stopped with two contacts, both below friction. '
+                            else
+                                if (.true.) write(out_unit,*) ' Gliding again...'
+                                if (test_glide) then
+                                    write(out_unit,*) 'test_glide max_fiber invoked!',i
+                                    max_fibers=i+8
+                                    glide_in=.false.
+                                end if
+                            end if
+                        else
+                            if (.true.) write(out_unit,*) ' Stopped with two contacts and gliding turned off!'
+                            stopped=.true.
+                        end if
+
                     case default
                         ! Kludge here... in theory, there could be three contacts and fiber could still roll... this should be rare...
-                        if (debug) write(out_unit,*) ' Stopped...'
+                        if (.true.) write(out_unit,*) ' Stopped w/ 3 or more contacts...',contacts(i,1:3,5)
                         stopped=.true.
                     end select
 
                     ! Check if reached bottom
                     if ((fibers(i,3) .le. 0.d0) .or. (fibers(i,7) .le. 0.d0)) then
                         stopped=.true.
-                        !write(*,*) 'Stopped by touching bottom...'
+                        write(*,*) 'Stopped by touching bottom...'
                     end if
 
                 end do ! dropping loop
@@ -318,6 +343,8 @@ module fibers_place
             write(scr_unit,'(a)') '-purge g network y y'
             write(scr_unit,'(a)') '-purge g bigbox y y'
             write(scr_unit,'(a)') '-purge g smallbox y y'
+
+            if (test_glide) call init_random()
 
         end do ! rves loop
 
@@ -448,12 +475,12 @@ module fibers_place
     end function fiber_rotate
 
 
-    subroutine fiber_contact(i,min_olp,max_rad)
+    subroutine fiber_contact(i,max_rad)
         implicit none 
 
         !Declare calling parameters
         integer, intent(in) :: i
-        real(kind=DBL),intent(in) :: min_olp,max_rad
+        real(kind=DBL),intent(in) :: max_rad
 
         !Declare local variables
         real(kind=DBL), dimension(3)    :: contact_vec,contact_pt3D
@@ -571,6 +598,82 @@ module fibers_place
         end do
 
     end subroutine
+
+    function fiber_glide(i,step_size, friction, stop_glide) result(new_pos)
+        implicit none
+
+        ! Declare calling parameters:
+        integer, intent(in)             :: i
+        real(kind=DBL),intent(in)       :: step_size,friction
+
+        ! Output
+        real(kind=DBL),dimension(9)     :: new_pos
+        logical,dimension(2)            :: stop_glide
+
+        ! Local variables...
+        integer                         :: j,one
+        real(kind=DBL),dimension(2,3)   :: top_pt,bot_pt,glide_dir
+        real(kind=DBL)                  :: z,new_length
+        real(kind=DBL),dimension(3)     :: adj_length
+        real(kind=DBL),dimension(2)     :: length
+
+        ! For each of the two contacts...
+        do j=1,2
+            ! Determine the downward direction of the contacted fiber....
+            top_pt(j,1:3)=fibers(int(contacts(i,j,1)),1:3)
+            bot_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
+            if (top_pt(j,3) .lt. bot_pt(j,3)) then
+                bot_pt(j,1:3)=top_pt(j,1:3)
+                top_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
+            end if
+            ! Get unit vector in downward contacted fiber direction, take z as slope...
+            glide_dir(j,1:3)=(bot_pt(j,1:3)-top_pt(j,1:3))/fibers(int(contacts(i,j,1)),9)
+            if (debug) write(*,*) 'FIBER_GLIDE: glide_dir: ', glide_dir(j,1:3)
+            !read(*,*)
+            ! set z to positive for "along down direction"...
+            z=0.d0-glide_dir(j,3)
+            ! if z is below a threshold, no glide, stop further gliding...
+            if ((z .lt. friction)) then
+                glide_dir(j,1:3)=0.d0
+                stop_glide(j)=.true.
+            else
+                if (debug) then
+                    write(*,*) ' FIBER_GLIDE: Gliding! '
+                    !read(*,*)
+                end if
+                stop_glide(j)=.false.
+                ! if big z, set glide to x-y dir only of contacted fiber, the z fraction of a step.
+                glide_dir(j,3)=0.d0
+                glide_dir(j,1:3)=glide_dir(j,1:3)/norm2(glide_dir(j,1:3))*z*step_size
+            end if
+        end do
+
+        ! Determine which contact goes with which fiber end
+        length(1)=norm2(contacts(i,1,2:4)-fibers(i,1:3))
+        length(2)=norm2(contacts(i,2,2:4)-fibers(i,1:3))
+        ! "one" is the first contact, it's value is which contacting fiber end (1:3, or 5:7)
+        if (length(1) .lt. length(2)) one=1
+
+        ! Set up new fiber position... WITH extra length...
+        new_pos(:)=fibers(i,:)
+        new_pos(1:3)=new_pos(1:3)+glide_dir(one,1:3)
+        new_pos(5:7)=new_pos(5:7)+glide_dir(mod(one,2)+1,1:3)
+
+        ! Compute new length, amount extended as vector along new fiber
+        new_length=norm2(new_pos(1:3)-new_pos(5:7))
+        adj_length(1:3)=(new_length-new_pos(9))*(new_pos(5:7)-new_pos(1:3))/new_length
+        ! shorten each end by 0.5*extended vector....
+        new_pos(5:7)=new_pos(5:7)-0.5*adj_length(1:3)
+        new_pos(1:3)=new_pos(1:3)+0.5*adj_length(1:3)
+        ! Check shortened new length...
+        if (abs(norm2(new_pos(1:3)-new_pos(5:7))-new_pos(9)) .gt. 0.001) then
+            write(*,*) ' GLIDE lenght ERROR: ',adj_length, new_pos(5:7)-new_pos(1:3), new_pos(9)
+            read (*,*)
+        end if
+
+
+
+    end function
 
 
 
