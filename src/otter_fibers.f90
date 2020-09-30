@@ -102,7 +102,8 @@ module fibers_place
             big_box_vol=big_box_vol*box_range(i)
         end do
         ! Estimate max number of fibers as 4*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
-        max_fibers=4*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
+        ! Adding 25% to account for basal boundary amount.
+        max_fibers=5*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
         ! set up for periodic images
         max_fibers=9*max_fibers
         write(out_unit,*) ''
@@ -242,10 +243,11 @@ module fibers_place
                     end select
 
                     ! Check if reached bottom
-                    if ((fibers(i,3) .le. 0.d0) .or. (fibers(i,7) .le. 0.d0)) then
-                        stopped=.true.
-                        write(*,*) 'Stopped by touching bottom...'
-                    end if
+                    !bottom=0.d0-0.25*box_length(3)
+                    !if ((fibers(i,3) .le. bottom) .or. (fibers(i,7) .le. bottom)) then
+                    !    stopped=.true.
+                    !    write(*,*) 'Stopped by touching bottom...'
+                    !end if
 
                 end do ! dropping loop
 
@@ -484,10 +486,11 @@ module fibers_place
 
         !Declare local variables
         real(kind=DBL), dimension(3)    :: contact_vec,contact_pt3D
-        real(kind=DBL), dimension(2)    :: radius,near_ptP
-        real(kind=DBL), dimension(2,3)  :: near_pt3D,fiber_vec,face_vec
-        real(kind=DBL)                  :: dist
-        integer                         :: j,k
+        real(kind=DBL), dimension(2)    :: radius,near_ptP,sign_contact, near_endP
+        real(kind=DBL), dimension(2,3)  :: near_pt3D,fiber_vec,face_vec, &
+                                           center, near_end3D
+        real(kind=DBL)                  :: dist,bottom, dist_end, sign_fiber
+        integer                         :: j,k,contact_case,l
         logical                         :: contact,alt_contact=.false.
 
         num_contacts(i)=0
@@ -516,14 +519,86 @@ module fibers_place
 
                 radius(1)=fibers(i,4)+near_ptP(1)*(fibers(i,8)-fibers(i,4))
                 radius(2)=fibers(j,4)+near_ptP(2)*(fibers(j,8)-fibers(j,4))
+                center(1,:)=fibers(i,1:3)+near_ptP(1)*(fibers(i,5:7)-fibers(i,1:3))
+                center(2,:)=fibers(j,1:3)+near_ptP(2)*(fibers(j,5:7)-fibers(j,1:3))
+                contact_vec(:)=near_pt3D(2,:)-near_pt3D(1,:)
+                fiber_vec(1,:)=(fibers(i,5:7)-fibers(i,1:3))/fibers(i,9)
+                fiber_vec(2,:)=(fibers(j,5:7)-fibers(j,1:3))/fibers(j,9)
+
+                contact_case=0
+                if ((near_ptP(1) .eq. 0.d0) .or. (near_ptP(1) .eq. 1.d0)) contact_case=1
+                if ((near_ptP(2) .eq. 0.d0) .or. (near_ptP(2) .eq. 1.d0)) contact_case=contact_case+2
+                contact_case=contact_case+10
+
+                sign_contact(1)=1.d0
+                sign_contact(2)=-1.d0
 
                 ! rounded end approximation...
                 alt_contact=.false.
                 if (.not. alt_contact) then
-                    if (dist .le. (radius(1)+radius(2)-min_olp)) then 
-                        contact=.true.
-                        contact_pt3D(1:3)=near_pt3D(1,1:3)+0.5*(near_pt3D(2,1:3)-near_pt3D(1,1:3))
-                    end if
+                    select case (contact_case)
+                    case (3)
+                        !! END-TO-END
+                        ! Project contact_vec into each face to for face_vec with length
+                        ! radius minus 1/2 min_olp -- this is a kludge with min_olp...
+                        ! If these face_vec segments intersect (min dist=0) then contact.
+                        ! Math for projection is vec-plane_vec*dot(vec,plane_vec)/norm(plane_vec)
+                        
+                        do k=1,2
+                            sign_fiber=1.d0
+                            if (near_ptP(k) .eq. 0.d0) sign_fiber=-1.d0
+
+                            face_vec(k,1:3)=( sign_contact(k)*contact_vec(:) ) - &
+                                            ( sign_fiber*fiber_vec(k,:) ) * &
+                                            dot_product(sign_contact(k)*contact_vec(:), &
+                                                        sign_fiber*fiber_vec(k,:)) / &
+                                            norm2(sign_fiber*fiber_vec(k,:))
+                            face_vec(k,:)=face_vec(k,:)/norm2(face_vec(k,:))*radius(k)-0.5*min_olp
+                        end do
+                        call segments_dist_3d(center(1,:),face_vec(1,:),center(2,:),face_vec(2,:), &
+                                              dist_end, near_end3D(1,:), near_end3D(2,:), &
+                                              near_endP(1), near_endP(2) )
+                        if (dist_end .lt. 1.e-6) then
+                            contact_pt3D(1:3)=( near_end3D(1,:)+near_end3D(2,:) ) / 2.d0
+                            contact=.true. 
+                        end if
+
+                    case (2,1)
+                        k=contact_case
+
+                        sign_fiber=1.d0
+                        if (near_ptP(k) .eq. 0.d0) sign_fiber=-1.d0
+
+                        face_vec(k,1:3)=( sign_contact(k)*contact_vec(:) ) - &
+                                        ( sign_fiber*fiber_vec(k,:) ) * &
+                                        dot_product(sign_contact(k)*contact_vec(:), &
+                                                    sign_fiber*fiber_vec(k,:)) / &
+                                        norm2(sign_fiber*fiber_vec(k,:))
+                        face_vec(k,:)=face_vec(k,:)/norm2(face_vec(k,:))*radius(k)
+                        
+                        l=i
+                        if (k .eq. 2) l=j
+                        call segments_dist_3d(center(k,:),face_vec(k,:),fibers(l,1:3), &
+                                              fibers(l,5:7),dist_end,near_end3D(1,:), &
+                                              near_end3D(2,:), near_endP(1), near_endP(2) )
+                        if (dist_end .lt. radius(mod(k,2)+1)-min_olp) then
+                            contact_pt3D(1:3)=near_end3D(2,:)
+                            contact=.true. 
+                        end if
+
+                    case default
+
+                        !!!! ORIGINAL ROUNDED END
+                        if (dist .le. (radius(1)+radius(2)-min_olp)) then 
+                            contact=.true.
+                            contact_pt3D(1:3)=near_pt3D(1,1:3)+0.5*(near_pt3D(2,1:3)-near_pt3D(1,1:3))
+                        end if
+                        !!!! END ORIGINAL ROUNDED END
+
+                    end select
+
+
+                    
                 else
 
                 !near_pt3D(1,:)=fibers(i,1:3)+near_ptP(1)*(fibers(i,5:7)-fibers(i,1:3))
@@ -583,7 +658,9 @@ module fibers_place
             end if ! end fine check
 
             if (contact) then
-                if (debug) write(*,*) ' Record fine contact! ',i,j
+                if (.true.) then
+                    write(*,*) ' Record fine contact!, Contact Case ',i,j,contact_case-10
+                end if
                 !write(*,*) ' Record fine contact! ',i,j
                 !write(*,*) ' Fiber 1: ',fibers(i,1:3),fibers(i,5:7)
                 !write(*,*) ' Fiber 2: ',fibers(j,1:3),fibers(j,5:7)
@@ -595,6 +672,19 @@ module fibers_place
                 contacts(i,num_contacts(i),5)=dist
             end if
 
+        end do
+
+        bottom=0.d0-0.25*box_length(3)
+        !!!!!!!!  SHOULD ONLY BE FOR TEST_GLIDE....
+        bottom=0
+        do k=3,7,4
+            if (fibers(i,k) .le. bottom) then
+                num_contacts(i)=num_contacts(i)+1
+                contacts(i,num_contacts(i),1)=0
+                contacts(i,num_contacts(i),2:4)=fibers(i,k-2:k)
+                contacts(i,num_contacts(i),5)=0.d0
+                write(*,*) ' One end is touching the bottom...', k
+            end if
         end do
 
     end subroutine
@@ -619,16 +709,23 @@ module fibers_place
 
         ! For each of the two contacts...
         do j=1,2
-            ! Determine the downward direction of the contacted fiber....
-            top_pt(j,1:3)=fibers(int(contacts(i,j,1)),1:3)
-            bot_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
-            if (top_pt(j,3) .lt. bot_pt(j,3)) then
-                bot_pt(j,1:3)=top_pt(j,1:3)
-                top_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
+
+            ! If contact is with the bottom..
+            if (contacts(i,j,1) .lt. 1) then
+                glide_dir(j,1:3)=0.d0
+            else
+                ! Determine the downward direction of the contacted fiber....
+                top_pt(j,1:3)=fibers(int(contacts(i,j,1)),1:3)
+                bot_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
+                if (top_pt(j,3) .lt. bot_pt(j,3)) then
+                    bot_pt(j,1:3)=top_pt(j,1:3)
+                    top_pt(j,1:3)=fibers(int(contacts(i,j,1)),5:7)
+                end if
+                ! Get unit vector in downward contacted fiber direction, take z as slope...
+                glide_dir(j,1:3)=(bot_pt(j,1:3)-top_pt(j,1:3))/fibers(int(contacts(i,j,1)),9)
             end if
-            ! Get unit vector in downward contacted fiber direction, take z as slope...
-            glide_dir(j,1:3)=(bot_pt(j,1:3)-top_pt(j,1:3))/fibers(int(contacts(i,j,1)),9)
-            if (debug) write(*,*) 'FIBER_GLIDE: glide_dir: ', glide_dir(j,1:3)
+            
+            if (.true.) write(*,*) 'FIBER_GLIDE: glide_dir: ', glide_dir(j,1:3)
             !read(*,*)
             ! set z to positive for "along down direction"...
             z=0.d0-glide_dir(j,3)
@@ -646,12 +743,23 @@ module fibers_place
                 glide_dir(j,3)=0.d0
                 glide_dir(j,1:3)=glide_dir(j,1:3)/norm2(glide_dir(j,1:3))*z*step_size
             end if
+            if (.false.) then
+                write(*,*) ' glide_dir: ',glide_dir(j,1:3)
+                write(*,*) ' fibers(contacts(i,j,1),1:3), ...5:7): ',fibers(int(contacts(i,j,1)),1:3), &
+                    fibers(int(contacts(i,j,1)),5:7)
+                write(*,*) ' int(), contacts(i,j,1): ', int(contacts(i,j,1)), contacts(i,j,1)
+                read (*,*)
+            end if
         end do
 
+        !!!THis should work for bottom touching, but is not quite right.
+        !!! This is all unnecessary for both stop_glides=.true....
+
+        one=2
         ! Determine which contact goes with which fiber end
         length(1)=norm2(contacts(i,1,2:4)-fibers(i,1:3))
         length(2)=norm2(contacts(i,2,2:4)-fibers(i,1:3))
-        ! "one" is the first contact, it's value is which contacting fiber end (1:3, or 5:7)
+        ! fiber end "one" (1:3) is closer to either contact 2 (one=2) or 1 (one=1)
         if (length(1) .lt. length(2)) one=1
 
         ! Set up new fiber position... WITH extra length...
@@ -671,6 +779,10 @@ module fibers_place
             read (*,*)
         end if
 
+        if (.true.) then
+            write(*,*) ' orig fiber: ',fibers(i,:)
+            write(*,*) ' new_pos:    ',new_pos(:)
+        end if
 
 
     end function
