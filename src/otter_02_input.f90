@@ -87,7 +87,7 @@ module otter_input
 
     end subroutine get_spheres_input
 
-    subroutine get_fibers_input(min_rad, max_rad, min_length, max_length, friction, glide_num)
+    subroutine get_fibers_input(min_rad, max_rad, min_length, max_length, friction)
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !! Dependencies
@@ -97,16 +97,13 @@ module otter_input
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !! Variables & Constants
         real(kind=DBL)                  :: min_rad, max_rad, min_length, max_length, friction
-        integer                         :: glide_num
 
         write(out_unit,*) ' Fiber specific inputs... '
         write(out_unit,'(a)',ADVANCE='NO') '   Minimum and maximum fiber radii?              '
         read(in_unit,*) min_rad, max_rad
         write(out_unit,'(a)',ADVANCE='NO') '   Minimum and maximum fiber length?             '
         read(in_unit,*) min_length, max_length
-        write(out_unit,'(a)',ADVANCE='NO') '   Enable rigid fiber gliding? (1=yes, 0=no)     '
-        read(in_unit,*) glide_num
-        write(out_unit,'(a)',ADVANCE='NO') '   Min angle (deg) below horizontal for gliding? '
+        write(out_unit,'(a)',ADVANCE='NO') '   Min angle (deg) below horiz. for s/gliding?   '
         read(in_unit,*) friction
 
     end subroutine get_fibers_input

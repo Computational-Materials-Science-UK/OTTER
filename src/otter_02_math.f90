@@ -71,6 +71,18 @@ module otter_math
 
     END SUBROUTINE nearpt_pt2line3
 
+    !!! Provided by BECK
+
+    function cross2(a,b) result(cross)
+        implicit None
+
+        real(kind=DBL),dimension(2),intent(in) :: a,b
+        real(kind=DBL) :: cross
+
+        cross=a(1)*b(2)-a(2)*b(1)
+
+    end function
+
     !*****************************************************************************************
     !> distance_from_point_to_line
     !> author: Jacob Williams
