@@ -19,7 +19,7 @@ module otter_globals
     character(len=192)              :: out_path
     real(kind=DBL)                  :: min_olp, step_size
     real(kind=DBL),dimension(3)     :: box_length
-    logical,parameter               :: test_random=.TRUE.       !!! SET THIS TO TRUE to get same rand numbers!
+    logical,parameter               :: test_random=.FALSE.       !!! SET THIS TO TRUE to get same rand numbers!
 
     contains
 
