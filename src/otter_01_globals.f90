@@ -13,11 +13,13 @@ module otter_globals
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Global variables...
-    integer :: in_unit,out_unit
-    integer :: rves_num
-    character(len=24) :: rves_batch_name
-    character(len=192) :: out_path
-    real(kind=DBL) :: box_length
+    integer                         :: in_unit,out_unit
+    integer                         :: rves_num
+    character(len=24)               :: rves_batch_name
+    character(len=192)              :: out_path
+    real(kind=DBL)                  :: min_olp, step_size
+    real(kind=DBL),dimension(3)     :: box_length
+    logical,parameter               :: test_random=.FALSE.       !!! SET THIS TO TRUE to get same rand numbers!
 
     contains
 
@@ -38,6 +40,13 @@ module otter_globals
         call date_and_time(values=values)
         seed_int=values(8)*100000+values(7)*1000+values(6)*10+values(5)
         if (debug) write(*,*) ' init_random: values(1:8), seed_int: ',values,seed_int
+
+        if (test_random) then
+            write(*,*) ' *****WARNING*****'
+            write(*,*) ' You are running the test_random version.  See otter_globals!'
+            write(*,'(a)',ADVANCE='NO') ' Enter 8-digit random seed: '
+            read(*,*) seed_int
+        end if
         call srand(seed_int)
 
         if (debug) write(*,*) ' init_random: seed_int: ',seed_int

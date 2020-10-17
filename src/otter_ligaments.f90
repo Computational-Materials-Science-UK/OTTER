@@ -51,6 +51,7 @@ module ligaments_place
         !!!! Begin code...
 
         write(out_unit,*) ' In otter_ligaments stub...'
+        write(*,*) 'Learning git'
 
     end subroutine otter_ligaments
 
