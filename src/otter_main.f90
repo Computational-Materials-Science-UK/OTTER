@@ -26,6 +26,7 @@ program otter
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Dependencies
+    use otter_globals
     use spheres_place
     use fibers_place
     use ligaments_place
@@ -36,22 +37,17 @@ program otter
     implicit none 
 
     ! constants
-    character(len=3),parameter :: version='b.1'
-    character(len=*),parameter :: master_name='Matthew Beck'
-    character(len=*),parameter :: master_email='m.beck@uky.edu'
-    character(len=*),parameter :: master_web='https://beckdt.engr.uky.edu'
+    
 
     ! variables
-    logical :: debug=.false.            ! Enables debugging messages
     logical :: batch_exists,out_exists  ! checks for existing batch I/O files
-    integer :: in_unit,out_unit         ! I/O unit numbers
     integer :: structure_type           ! User selected structure version
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !! Begin code
 
-    ! Set debug status
-    debug=.false.
+    ! Initialize rand:
+    call init_random()
 
     ! Check for batch input, set-up input, output
     in_unit=5   ! Default for stdin
@@ -62,7 +58,7 @@ program otter
     inquire(FILE='otter.out', exist=out_exists)
 
     if (batch_exists) then
-        if (.not. out_exists) then
+        if (out_exists) then
             write(*,*) ' Batch input exists (otter.in). But otter.out exists and will be overwritten.'
             stop
         end if
@@ -76,9 +72,9 @@ program otter
     if (debug) write(*,*) ' I/O setup: (in_unit, out_unit) ',in_unit,out_unit
 
     ! Write code header...
-    write(out_unit,*) ' Welcome to OTTER: Complex Structure Generation Toolkit v',version
-    write(out_unit,*) '   For questions, bugs, etc., visit: ',master_web
-    write(out_unit,*) '   OTTERmaster: ',master_name,' ',master_email
+    write(out_unit,*) ' Welcome to OTTER: Complex Structure Generation Toolkit v',VERSION
+    write(out_unit,*) '   For questions, bugs, etc., visit: ',MASTER_WEB
+    write(out_unit,*) '   OTTERmaster: ',MASTER_NAME,' ',MASTER_EMAIL
     write(out_unit,*) 
 
     ! Get OTTER structure type...
@@ -93,11 +89,11 @@ program otter
     ! Call specific subroutine
     select case (structure_type)
     case (1)
-        call otter_spheres(in_unit,out_unit)
+        call otter_spheres()
     case (2)
-        call otter_fibers(in_unit,out_unit)
+        call otter_fibers()
     case (3)
-        call otter_ligaments(in_unit,out_unit)
+        call otter_ligaments()
     !!!!! Add new options here to match above...
     case default
         write(out_unit,*) ' This option is invalid.'
