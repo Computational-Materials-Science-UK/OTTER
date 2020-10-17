@@ -71,6 +71,18 @@ module otter_math
 
     END SUBROUTINE nearpt_pt2line3
 
+    !!! Provided by BECK
+
+    function cross2(a,b) result(cross)
+        implicit None
+
+        real(kind=DBL),dimension(2),intent(in) :: a,b
+        real(kind=DBL) :: cross
+
+        cross=a(1)*b(2)-a(2)*b(1)
+
+    end function
+
     !*****************************************************************************************
     !> distance_from_point_to_line
     !> author: Jacob Williams
@@ -307,6 +319,267 @@ module otter_math
         ! See discussion in documentation about rotations.f90
         !if (epsijkd.eq.1.D0) res = transpose(res)
 
-    end function ax2om_d 
+    end function ax2om_d
+
+    !*****************************************************************************80
+    !
+    !! SEGMENTS_DIST_3D computes the distance between two line segments in 3D.
+    !
+        !  Discussion:
+        !
+        !    NOTE: The special cases for identical and parallel lines have not been
+        !    worked out yet; those cases are exceptional, and so this code
+        !    is made available in a slightly unfinished form!
+        !
+        !    A line segment is the finite portion of a line that lies between
+        !    two points P1 and P2.
+        !
+        !    Given two line segments, consider the underlying lines on which
+        !    they lie.
+        !   
+        !    A) If the lines are identical, then the distance between the line segments
+        !    is 0, if the segments overlap, or otherwise is attained by the
+        !    minimum of the distances between each endpoint and the opposing
+        !    line segment.
+        !
+        !    B) If the lines are parallel, then the distance is either the distance
+        !    between the lines, if the projection of one line segment onto
+        !    the other overlaps, or otherwise is attained by the
+        !    minimum of the distances between each endpoint and the opposing
+        !    line segment.
+        !
+        !    C) If the lines are not identical, and not parallel, then there are 
+        !    unique points PN and QN which are the closest pair of points on the lines.
+        !    If PN is interior to [P1,P2] and QN is interior to [Q1,Q2],
+        !    then the distance between the two line segments is the distance
+        !    between PN and QN.  Otherwise, the nearest distance can be computed
+        !    by taking the minimum of the distance from each endpoing to the
+        !    opposing line segment.
+        !
+        !    Therefore, our computation first checks whether the lines are
+        !    identical, parallel, or other, and checks for the special case
+        !    where the minimum occurs in the interior.
+        !
+        !    If that case is ruled out, it computes and returns the minimum of:
+        !
+        !      Distance ( P1, [Q1,Q2] );
+        !      Distance ( P2, [Q1,Q2] );
+        !      Distance ( Q1, [P1,P2] );
+        !      Distance ( Q2, [P1,P2] );
+        !
+        !  Licensing:
+        !
+        !    This code is distributed under the GNU LGPL license. 
+        !
+        !  Modified:
+        !
+        !    12 August 2006
+        !
+        !  Author:
+        !
+        !    John Burkardt
+        !
+
+    subroutine segments_dist_3d ( p1, p2, q1, q2, dist, pn, qn, sn, tn )
+
+        !  Parameters:
+        !
+        !    Input, real(kind=DBL) P1(3), P2(3), the endpoints of the first
+        !       segment.
+        !    Input, real(kind=DBL) Q1(3), Q2(3), the endpoints of the second
+        !       segment.
+        !    Output, real(kind=DBL) DIST, the distance between the line segments.
+        implicit none
+        
+        integer, parameter                 :: dim_num = 3
+        integer                            :: close, i
+        real(kind=DBL)                     :: a,b,c,d,e
+        real(kind=DBL)                     :: det
+        real(kind=DBL), intent(out)        :: dist
+        real(kind=DBL), dimension(dim_num),intent(in)  :: p1,p2,q1,q2
+        real(kind=DBL), dimension(dim_num),intent(out) ::   pn,qn
+        real(kind=DBL), dimension(dim_num) :: u,v,w0
+        real(kind=DBL), intent(out)        :: sn, tn
+        real(kind=DBL), dimension(4)       :: un, dist2
+        real(kind=DBL), dimension(4,3)     :: rn
+
+        !  The lines are identical.
+        !  THIS CASE NOT SET UP YET
+        !
+            ! if ( lines_exp_equal_3d ( p1, p2, q1, q2 ) ) then
+            ! end if
+            !
+            !  The lines are not identical, but parallel
+            !  THIS CASE NOT SET UP YET.
+            !
+            ! if ( lines_exp_parallel_3d ( p1, p2, q1, q2 ) ) then
+            ! end if
+            !
+            !  C: The lines are not identical, not parallel.
+        
+        !  Let U = (P2-P1) and V = (Q2-Q1) be the direction vectors on
+        !  the two lines.
+        u(1:dim_num) = p2(1:dim_num) - p1(1:dim_num)
+        v(1:dim_num) = q2(1:dim_num) - q1(1:dim_num)
+    
+        !> Let SN be the unknown coordinate of the nearest point PN on line 1,
+        !  so that PN = P(SN) = P1 + SN * (P2-P1).
+        !> Let TN be the unknown coordinate of the nearest point QN on line 2,
+        !  so that QN = Q(TN) = Q1 + TN * (Q2-Q1).
+        !> Let W0 = (P1-Q1).
+        w0(1:dim_num) = p1(1:dim_num) - q1(1:dim_num)
+
+        !  The vector direction WC = P(SN) - Q(TC) is unique (among directions)
+        !  perpendicular to both U and V, so
+        !    U dot WC = 0
+        !    V dot WC = 0
+        !  or, equivalently:
+        !    U dot ( P1 + SN * (P2 - P1) - Q1 - TN * (Q2 - Q1) ) = 0
+        !    V dot ( P1 + SN * (P2 - P1) - Q1 - TN * (Q2 - Q1) ) = 0
+        !  or, equivalently:
+        !    (u dot u ) * sn - (u dot v ) tc = -u * w0
+        !    (v dot u ) * sn - (v dot v ) tc = -v * w0
+        !  or, equivalently:
+        !   ( a  -b ) * ( sn ) = ( -d )
+        !   ( b  -c )   ( tc )   ( -e )
+        a = dot_product ( u, u )
+        b = dot_product ( u, v )
+        c = dot_product ( v, v )
+        d = dot_product ( u, w0 )
+        e = dot_product ( v, w0 )
+    
+        !  Check the determinant.
+        det = - a * c + b * b
+        
+        if ( det == 0.0D+00 ) then
+            sn = 0.0D+00
+            if ( abs ( b ) < abs ( c ) ) then
+                tn = e / c
+            else
+                tn = d / b
+            end if
+        else
+            sn = ( c * d - b * e ) / det
+            tn = ( b * d - a * e ) / det
+        end if
+
+        !  Now if both nearest points on the lines
+        !  also happen to lie inside their line segments,
+        !  then we have found the nearest points on the line segments.
+        if ( 0.0D+00 <= sn .and. sn <= 1.0D+00 .and. &
+          0.0D+00 <= tn .and. tn <= 1.0D+00 ) then
+            pn(1:dim_num) = p1(1:dim_num) + sn * ( p2(1:dim_num) - p1(1:dim_num) )
+            qn(1:dim_num) = q1(1:dim_num) + tn * ( q2(1:dim_num) - q1(1:dim_num) )
+            dist = sqrt ( sum ( ( pn(1:dim_num) - qn(1:dim_num) )**2 ) )
+            return
+        end if
+        !  The nearest point did not occur in the interior.
+        !  Therefore it must be achieved at an endpoint.
+        !pn, qn, sn, tn 
+        !ppn, ssn
+
+        !write(*,*) ' SEGMENT: Endpt contact....'
+        ! case qn, p1
+        call segment_point_dist_3d ( q1, q2, p1, dist2(1), rn(1, 1:3), un(1) )
+        !case qn, p2
+        call segment_point_dist_3d ( q1, q2, p2, dist2(2), rn(2, 1:3), un(2) )
+        !case pn, q1
+        call segment_point_dist_3d ( p1, p2, q1, dist2(3), rn(3, 1:3), un(3) )
+        !case pn, q2
+        call segment_point_dist_3d ( p1, p2, q2, dist2(4), rn(4, 1:3), un(4) )
+
+        close=1
+        do i=2,4
+            if (dist2(i) .lt. dist2(close)) close=i
+        end do
+        
+        dist=dist2(close)
+        if (close .lt. 3) then
+            qn(1:dim_num)=rn(close,1:3)
+            tn=un(close)
+            if (close .eq. 1) then
+                pn(1:dim_num)=p1(1:dim_num)
+                sn=0.d0
+            else
+                pn(1:dim_num)=p2(1:dim_num) 
+                sn=1.d0
+            end if
+        else
+            pn(1:dim_num)=rn(close,1:3)
+            sn=un(close)
+            if (close .eq. 3) then
+                qn=q1(1:dim_num)
+                tn=0.d0
+            else
+                qn=q2(1:dim_num) 
+                tn=1.d0
+            end if
+        end if
+        
+        return
+    end
+
+    !*****************************************************************************80
+    !
+    !! SEGMENT_POINT_DIST_3D: distance ( line segment, point ) in 3D.
+    !
+        !  Discussion:
+        !
+        !    A line segment is the finite portion of a line that lies between
+        !    two points P1 and P2.
+        !
+        !    The nearest point will satisfy the condition
+        !
+        !      PN = (1-T) * P1 + T * P2.
+        !
+        !    T will always be between 0 and 1.
+        !
+        !  Licensing:
+        !
+        !    This code is distributed under the GNU LGPL license. 
+        !
+        !  Modified:
+        !
+        !    03 May 2006
+        !
+        !  Author:
+        !
+        !    John Burkardt
+        !
+
+    subroutine segment_point_dist_3d ( p1, p2, p, dist, pn, t )
+        !  Parameters:
+        !
+        !    Input, real(kind=DBL) P1(3), P2(3), the endpoints of the segment.
+        !
+        !    Input, real(kind=DBL) P(3), the point whose nearest neighbor on
+        !    the line segment is to be determined.
+        !
+        !    Output, real(kind=DBL) DIST, the distance from the point to the
+        !    line segment.
+        !
+        implicit none
+            
+        integer ( kind = 4 ), parameter :: dim_num = 3
+        real(kind=DBL) bot,t
+        real(kind=DBL) dist
+        real(kind=DBL),dimension(dim_num) :: p,p1,p2,pn
+        !
+        !  If the line segment is actually a point, then the answer is easy.
+        !
+        if ( all ( p1(1:dim_num) == p2(1:dim_num) ) ) then    
+            t = 0.0D+00
+        else    
+            bot = sum ( ( p2(1:dim_num) - p1(1:dim_num) )**2 )
+            t = sum ( ( p(1:dim_num)  - p1(1:dim_num) ) &
+              * ( p2(1:dim_num) - p1(1:dim_num) ) ) / bot
+            
+            t = max ( t, 0.0D+00 )
+            t = min ( t, 1.0D+00 )           
+        end if
+        pn(1:dim_num) = p1(1:dim_num) + t * ( p2(1:dim_num) - p1(1:dim_num) )
+        dist = sqrt ( sum ( ( p(1:dim_num) - pn(1:dim_num) )**2 ) )
+        return
+    end
 
 end module otter_math
