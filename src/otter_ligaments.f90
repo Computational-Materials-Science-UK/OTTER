@@ -53,7 +53,7 @@ module ligaments_place
         !!!! Constants
         !!!! Variables
         real(kind=DBL)              :: sphere_range, &
-                                       n_c_star, n_c_tot, n_sphere_in
+                                       n_c_star, n_c_tot, n_sphere_in, n_c_star_all
         integer                     :: nn_num, num_bad, &
                                        rve, lig_count, end_sphere, curr_sphere, &
                                        i,j,k,l,jj, &
@@ -357,6 +357,7 @@ module ligaments_place
                 end if
             end do
             n_c_star=n_c_tot/n_sphere_in
+            n_c_star_all=n_c_star_all+n_c_star
 
             write(dat_unit,*) rve, n_c_tot, n_sphere_in, n_c_star
 
@@ -364,6 +365,13 @@ module ligaments_place
 
         write(scr_unit,'(a)') 'FILEDIA 1'
         write(scr_unit,'(a)') '_close'
+
+        n_c_star_all=n_c_star_all/rves_num
+        write(dat_unit,*) ''
+        write(dat_unit,*) ' Overall n_c_star: ',n_c_star_all
+
+        close(dat_unit)
+        close(scr_unit)
 
         
     end subroutine otter_ligaments
