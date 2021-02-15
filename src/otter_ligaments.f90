@@ -349,7 +349,7 @@ module ligaments_place
                 ! Check if sphere was in box for ligament creation
                 in_box=.true.
                 do jj=1,3
-                    if ((spheres(j,jj) .lt. 0.0) .or. (spheres(j,jj) .gt. box_length(j)+2.d0*shift(j))) in_box=.false.
+                    if ((spheres(i,jj) .lt. 0.0) .or. (spheres(i,jj) .gt. box_length(jj)+2.d0*shift(jj))) in_box=.false.
                 end do
                 if (in_box) then
                     n_c_tot=n_c_tot+lig_map(i,nn_num+1)
