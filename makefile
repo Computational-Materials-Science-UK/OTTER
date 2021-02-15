@@ -35,9 +35,10 @@ MAIN := $(OBJ_DIR)/otter_main.o
 #OBJ := $(filter-out $(MAIN),$(OBJ))
 TEST := $(OBJ_DIR)/otter_test.o
 #OBJ := $(filter-out $(TEST),$(OBJ))
-OBJ := $(OBJ_DIR)/otter_01_globals.o $(OBJ_DIR)/otter_02_math.o $(OBJ_DIR)/otter_02_input.o \
-    $(OBJ_DIR)/otter_03_spheres_globals.o $(OBJ_DIR)/otter_03_fibers_globals.o \
-	$(OBJ_DIR)/otter_03_ligaments_globals.o \
+OBJ := $(OBJ_DIR)/otter_01_globals.o $(OBJ_DIR)/otter_02_math.o  \
+    $(OBJ_DIR)/otter_02_spheres_globals.o $(OBJ_DIR)/otter_02_fibers_globals.o \
+	$(OBJ_DIR)/otter_02_ligaments_globals.o \
+	$(OBJ_DIR)/otter_03_input.o \
 	$(OBJ_DIR)/otter_fibers.o $(OBJ_DIR)/otter_ligaments.o \
     $(OBJ_DIR)/otter_spheres.o
 
