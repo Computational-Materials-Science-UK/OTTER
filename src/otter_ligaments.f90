@@ -53,10 +53,9 @@ module ligaments_place
         !!!! Constants
         !!!! Variables
         real(kind=DBL)              :: sphere_range, &
-                                       n_c_star
+                                       n_c_star, n_c_tot, n_sphere_in
         integer                     :: nn_num, num_bad, &
                                        rve, lig_count, end_sphere, curr_sphere, &
-                                       n_c_tot, n_sphere_in, &
                                        i,j,k,l,jj, &
                                        scr_unit,dat_unit
         character(len=200)          :: full_scr_name,full_nnc_name,saveas,exportstl,full_name
@@ -343,8 +342,8 @@ module ligaments_place
 
             !!!! Collect RVE statistics
 
-            n_c_tot=0
-            n_sphere_in=0
+            n_c_tot=0.d0
+            n_sphere_in=0.d0
             do i=1,sphere_num
                 ! Check if sphere was in box for ligament creation
                 in_box=.true.
@@ -352,8 +351,8 @@ module ligaments_place
                     if ((spheres(j,jj) .lt. 0.0) .or. (spheres(j,jj) .gt. box_length(j)+2.d0*shift(j))) in_box=.false.
                 end do
                 if (in_box) then
-                    n_c_tot=n_c_tot+int(lig_map(i,nn_num+1))
-                    n_sphere_in=n_sphere_in+1
+                    n_c_tot=n_c_tot+lig_map(i,nn_num+1)
+                    n_sphere_in=n_sphere_in+1.d0
                 end if
             end do
             n_c_star=n_c_tot/n_sphere_in
