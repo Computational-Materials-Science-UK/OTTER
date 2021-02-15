@@ -250,7 +250,7 @@ module ligaments_place
                         ! Check if sphere is in final box
                         in_box=.true.
                         do jj=1,3
-                            if ((spheres(j,jj) .lt. 0.0) .or. (spheres(j,jj) .gt. box_length(j)+2.d0*shift(j))) in_box=.false.
+                            if ((spheres(j,jj) .lt. 0.0) .or. (spheres(j,jj) .gt. box_length(jj)+2.d0*shift(jj))) in_box=.false.
                         end do
                         ! does the sphere already have the number of ligaments for this round?
                         if ((lig_map(j,nn_num+1) .lt. i) .and. in_box) then
@@ -300,7 +300,7 @@ module ligaments_place
                 in_box=.true.
                 do jj=1,3
                     if ((spheres(i,jj) .lt. (0.0-spheres(i,4))) .or. (spheres(i,jj) .gt. &
-                        (box_length(j)+2.d0*shift(j)+spheres(i,4)))) in_box=.false.
+                        (box_length(jj)+2.d0*shift(jj)+spheres(i,4)))) in_box=.false.
                 end do
                 if (in_box) write(scr_unit,202) spheres(i,1:4)
             end do
