@@ -61,7 +61,8 @@ module ligaments_place
                                        scr_unit,dat_unit
         character(len=200)          :: full_scr_name,full_nnc_name,saveas,exportstl,full_name
         logical                     :: good, in_box, found
-        character                   :: cont, num_char
+        character                   :: cont
+        character(len=8)            :: num_char
         character(len=50)           ::  date_time
 
         real(kind=8),allocatable,dimension(:,:)     :: tempnn
