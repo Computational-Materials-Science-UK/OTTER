@@ -54,10 +54,6 @@ module otter_input
         write(out_unit,*) ' Universal settings...'
         write(out_unit,'(a)',ADVANCE='NO') '   Box dimensions (x, y, z):                     '
         read(in_unit,*) box_length(1:3)
-        write(out_unit,'(a)',ADVANCE='NO') '   What is the min overlap distance for contact? '
-        read(in_unit,*) min_olp
-        write(out_unit,'(a)',ADVANCE='NO') '   What is the step size for moving primitives?  '
-        read(in_unit,*) step_size
 
         if (debug) write(*,*) ' Done otter_input:get_gen_input'
 
@@ -82,6 +78,10 @@ module otter_input
         read(in_unit,*) min_rad, max_rad
         write(out_unit,'(a)',ADVANCE='NO') '   Boundary thicknesses (+/-x, +/-y, +/-z):      '
         read(in_unit,*) box_boundary(1:6)
+        write(out_unit,'(a)',ADVANCE='NO') '   What is the min overlap distance for contact? '
+        read(in_unit,*) min_olp
+        write(out_unit,'(a)',ADVANCE='NO') '   What is the step size for moving primitives?  '
+        read(in_unit,*) step_size
 
         if (debug) write(out_unit,*) ' get_spheres_input(): exit'
 
@@ -103,9 +103,41 @@ module otter_input
         read(in_unit,*) min_rad, max_rad
         write(out_unit,'(a)',ADVANCE='NO') '   Minimum and maximum fiber length?             '
         read(in_unit,*) min_length, max_length
+        write(out_unit,'(a)',ADVANCE='NO') '   What is the min overlap distance for contact? '
+        read(in_unit,*) min_olp
+        write(out_unit,'(a)',ADVANCE='NO') '   What is the step size for moving primitives?  '
+        read(in_unit,*) step_size
         write(out_unit,'(a)',ADVANCE='NO') '   Min angle (deg) below horiz. for s/gliding?   '
         read(in_unit,*) friction
 
     end subroutine get_fibers_input
+
+    subroutine get_ligaments_input()
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !! Dependencies
+
+        ! Requires otter globals, provided in module...
+        ! Requires otter_ligaments_globals: min_rad, max_rad, sphere_buffer, sphere_inflation, sphere_num, box_vol_factor, num_ligs
+ 
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        use otter_ligaments_globals
+
+        !! Variables & Constants
+
+        !! Get Input
+        write(out_unit,*) ' Ligaments specific inputs... '
+        write(out_unit,'(a)',ADVANCE='NO') '   Number of spheres in compute box?   '
+        read(in_unit,*) sphere_num
+        write(out_unit,'(a)',ADVANCE='NO') '   (Nearest neighbor) connectivity number?   '
+        read(in_unit,*) num_ligs
+        write(out_unit,'(a)',ADVANCE='NO') '   ''Big Box'' volume factor (>1.0)?   '
+        read(in_unit,*) box_vol_factor
+        write(out_unit,'(a)',ADVANCE='NO') '   Sphere (node) min/max radii?   '
+        read(in_unit,*) min_rad,max_rad
+        write(out_unit,'(a)',ADVANCE='NO') '   Sphere (node) buffer and inflation?   '
+        read(in_unit,*) sphere_buffer, sphere_inflation
+
+    end subroutine get_ligaments_input
+
 
 end module otter_input
