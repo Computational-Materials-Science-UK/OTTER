@@ -14,6 +14,7 @@
 #####
 # makfile - base makefile for GNU make
 #	Vb.1 - Working version
+#	Vb.2 - Added incorporated ligaments code 02/15/2021
 
 # External Dependencies:
 #	GNU Make
@@ -37,8 +38,9 @@ TEST := $(OBJ_DIR)/otter_test.o
 #OBJ := $(filter-out $(TEST),$(OBJ))
 OBJ := $(OBJ_DIR)/bspline_kinds_module.o $(OBJ_DIR)/bspline_sub_module.o \
     $(OBJ_DIR)/bspline_oo_module.o $(OBJ_DIR)/bspline_module.o \
-    $(OBJ_DIR)/otter_01_globals.o $(OBJ_DIR)/otter_02_math.o $(OBJ_DIR)/otter_02_input.o \
-    $(OBJ_DIR)/otter_03_spheres_globals.o $(OBJ_DIR)/otter_03_fibers_globals.o \
+    $(OBJ_DIR)/otter_01_globals.o $(OBJ_DIR)/otter_02_math.o  \
+    $(OBJ_DIR)/otter_02_spheres_globals.o $(OBJ_DIR)/otter_03_fibers_globals.o \
+	$(OBJ_DIR)/otter_03_input.o\
     $(OBJ_DIR)/otter_fibers.o $(OBJ_DIR)/otter_ligaments.o \
     $(OBJ_DIR)/otter_spheres.o \
     

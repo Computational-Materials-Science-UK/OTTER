@@ -59,7 +59,7 @@ program otter
 
     if (batch_exists) then
         if (out_exists) then
-            write(*,*) ' Batch input exists (otter.in). But otter.out exists and will be overwritten.'
+            write(*,*) ' Batch input exists (otter.in). But otter.out exists and would be overwritten. Stopping.'
             stop
         end if
         in_unit=51
