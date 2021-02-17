@@ -423,7 +423,7 @@ module fibers_place
                 fibers(i,1:3)=fibers(i,1:3)+sign(1.d0,-1.d0*test_mid)*step_size*fiber_vec(:)
                 fibers(i,5:7)=fibers(i,5:7)+sign(1.d0,-1.d0*test_mid)*step_size*fiber_vec(:)
                 contact_ptR=dot_product((contacts(i,1,2:4)-fibers(i,1:3)),fiber_vec(:))
-                write(*,*) ' FIBER_ROTATE: shifting fiber off mid-point... '
+                !write(*,*) ' FIBER_ROTATE: shifting fiber off mid-point... '
             end if
 
             ! Find r vector for torque calculation...
