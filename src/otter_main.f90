@@ -71,7 +71,7 @@ program otter
 
     if (debug) write(*,*) ' I/O setup: (in_unit, out_unit) ',in_unit,out_unit
 
-    ! Write code header...
+    ! Write code header... 
     write(out_unit,*) ' Welcome to OTTER: Complex Structure Generation Toolkit v',VERSION
     write(out_unit,*) '   For questions, bugs, etc., visit: ',MASTER_WEB
     write(out_unit,*) '   OTTERmaster: ',MASTER_NAME,' ',MASTER_EMAIL

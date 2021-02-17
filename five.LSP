@@ -1,0 +1,12 @@
+(defun C:five()
+  (setq pt1 (getpoint "Point 1 "))
+  (setq pt2 (getpoint "Point 2 "))
+  (setq pt3 (getpoint "Point 3 "))
+  (setq pt4 (getpoint "Point 4 "))
+  (setq pt5 (getpoint "Point 5 "))
+  (setq diam (getreal "Diameter "))
+  (command "_.spline" pt1 pt2 pt3 pt4 pt5 "" "" "")
+  (setq lin (entlast))
+  (command "_.circle" pt1 diam "_.sweep" (entlast) "" lin)
+  (princ)
+);END test

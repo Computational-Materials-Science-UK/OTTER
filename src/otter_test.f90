@@ -45,7 +45,6 @@ program otter_test
 
     ! Initialize rand:
     write (*,*) ' In OTTER test, ',version
-
     call init_random()
     write(*,*) ' init_random() completed... ',rand()
     
