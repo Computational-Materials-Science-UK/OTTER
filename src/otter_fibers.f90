@@ -62,7 +62,7 @@ module fibers_place
         integer                         ::  i,j,k, periodic_added, periodic_j, periodic_i, &
                                             max_fibers, go_glide, &
                                             scr_unit,dat_unit,rve_scr_unit,rve_nnc_unit, &
-                                            rve,num_bad,excess_num,bending_case
+                                            rve,num_bad,excess_num,bending_case,union
         character(len=200)              ::  full_scr_name,full_nnc_name,full_name, &
                                             full_rves_batch_name,full_nncd_name, &
                                             saveas,exportstl
@@ -75,6 +75,7 @@ module fibers_place
 
         !!!! Begin code...
 
+        
         write (out_unit,*) ' Welcome to Fibers vb.1!'
         write (out_unit,*) ' '
 
@@ -98,7 +99,7 @@ module fibers_place
         ! Estimate max number of fibers as 4*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
         ! Adding 25% to account for basal boundary amount.
         max_fibers=5*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
-        !max_fibers=60
+        max_fibers=4
         ! set up for periodic images
         max_fibers=9*max_fibers
         write(out_unit,*) ''
@@ -124,9 +125,9 @@ module fibers_place
         allocate(contacts(max_fibers,7,9))
         allocate(num_contacts(max_fibers))
         allocate(bent(max_fibers))
-        allocate(fiber_path(max_fibers,11,3))
+        allocate(fiber_path(max_fibers,41,3))
         allocate(control_points(max_fibers,5,3))
-        allocate(bent_to_stright(max_fibers,11,1))
+        allocate(bent_to_stright(max_fibers,41,1))
         bent=0
 
         radius_range=max_rad-min_rad
@@ -207,27 +208,34 @@ module fibers_place
                     fibers(i,6)=fibers(i,2)+fibers(i,9)*sin(dir_deg/360.d0*2.d0*PI)
                 end if
                 !<<<<<<<<<<<<<<<<<<<<<<<<ADDED FOR TESTING>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                ! if (i.eq.1)then
-                ! fibers(i,1)=1.d0
-                ! fibers(i,2)=1.d0
+                if (i.eq.1)then
+                fibers(i,1)=1.d0
+                fibers(i,2)=1.d0
                                            
-                ! fibers(i,5)=fibers(i,1)
-                ! fibers(i,6)=fibers(i,2)+fibers(i,9)
-                ! end if
-                ! if(i.eq.10)then
-                !     fibers(i,1)=0.d0
-                !     fibers(i,2)=5.d0
-                                      
-                !     fibers(i,5)=fibers(i,1)+fibers(i,9)
-                !     fibers(i,6)=fibers(i,2)
-                ! end if
-                ! if (i.eq.19)then
-                !     fibers(i,1)=5.d0
-                !     fibers(i,2)=1.d0
-                                              
-                !     fibers(i,5)=fibers(i,1)
-                !     fibers(i,6)=fibers(i,2)+fibers(i,9)
-                ! end if
+                fibers(i,5)=fibers(i,1)
+                fibers(i,6)=fibers(i,2)+fibers(i,9)
+                end if
+                if(i.eq.10)then
+                    fibers(i,1)=10.d0
+                fibers(i,2)=1.d0
+                                           
+                fibers(i,5)=fibers(i,1)
+                fibers(i,6)=fibers(i,2)+fibers(i,9)
+                end if
+                if (i.eq.19)then
+                    fibers(i,1)=25.d0
+                    fibers(i,2)=1.d0
+                                               
+                    fibers(i,5)=fibers(i,1)
+                    fibers(i,6)=fibers(i,2)+fibers(i,9)
+                end if
+                if (i.eq.28)then
+                    fibers(i,1)=0.d0
+                    fibers(i,2)=20.d0
+                                               
+                    fibers(i,6)=fibers(i,2)
+                    fibers(i,5)=fibers(i,1)+fibers(i,9)
+                end if
 
                 
 
@@ -324,6 +332,7 @@ module fibers_place
             ,f0.3,',',f0.3,' ',f0.3)
             write(scr_unit,'(a)') '-osnap off'
             write(scr_unit,'(a)') '_zoom -300,-300,-300 500,500,500'
+            union=0
             do j=1,i-1
 
                 ! Check whether fiber has a least one end in box...
@@ -341,6 +350,11 @@ module fibers_place
                     if (in_box) write(scr_unit,201) control_points(j,1,1:3),control_points(j,2,1:3),&
                     control_points(j,3,1:3),control_points(j,4,1:3),control_points(j,5,1:3), fibers(j,4)
                 end if
+                if (j.eq.50*union) then
+                    write(scr_unit,'(a)') '_union all '
+                    union=union+1
+                end if
+                 
             end do
             
             write(scr_unit,'(a)') '_union all '
@@ -491,7 +505,7 @@ module fibers_place
                        max(fibers(j,k),fibers(j,k+4))+2.*max_rad ) ) contact=.false.
             end do
             
-           
+            
             ! check fine contact...
             if (contact) then
                 if (bent(j).eq.1) then
@@ -635,7 +649,7 @@ module fibers_place
 
         bottom=0.d0-0.25*box_length(3)
         !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<TESTING>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        bottom=5.d-1
+        bottom=1.d0!5.d-1
         !!!!!!!!  SHOULD ONLY BE FOR TEST_GLIDE....
         !bottom=0
         do k=3,7,4
@@ -1071,17 +1085,16 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
     
     real(kind=8),dimension(3):: pt,endpoint1,endpoint2,AB,BE,AE,AB_cross_AE,AB_cross_BE
     real(kind=DBL),dimension(3)::p,temp_p,contact_pt3D,temp_pt
-    real(kind=DBl),dimension(11)::slope_PE
+    real(kind=DBl),dimension(41)::slope_PE
     real(kind=8):: AB_dot_BE,AB_dot_AE,mag_AB,t1,t2,t3,temp_dist,temp_slope,AB_dot_AB 
-    integer(ip)::i,n,k,melissa,bus
+    integer(ip)::i,n,k
     logical                         :: contact
     
      
     t=0
     temp_slope=0
     temp_dist=10.d0
-    melissa=0
-    bus=0
+   
     endpoint1(1:3)=fibers(i,1:3)
     endpoint2(1:3)=fibers(i,5:7)
     ! endpoint1(1)=0.d0
@@ -1092,10 +1105,10 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
     ! endpoint2(3)=5.d0
     AB=endpoint2-endpoint1
     AB_dot_AB=dot_product(AB,AB)
-    ! write(*,*)'End Point 1 = ',endpoint1
-    ! write(*,*)'End Point 2 = ',endpoint2
+    !write(*,*)'End Point 1 = ',endpoint1
+    !write(*,*)'End Point 2 = ',endpoint2
     ! write(*,*)'AB = ',AB
-    do n=1,11
+    do n=1,21
         ! write(*,*)'j = ',j
         ! write(*,*)'n = ',n
     
@@ -1151,7 +1164,6 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
                 temp_p=P
                 temp_pt=pt
                 temp_dist=bent_to_stright(k,n,1)
-                bus=n
             end if    
         endif
         
@@ -1163,12 +1175,11 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
         contact=.false.
     end if
 
-        ! write(*,*)'Slope = ',temp_slope
-        ! write(*,*)'Distance = ',temp_dist
-        ! write(*,*)'Fun =',melissa
-        ! write(*,*)'Bus =',bus
-        ! write(*,*)'point ',temp_p
-        ! read(*,*)
+        !write(*,*)'Slope = ',temp_slope
+        !write(*,*)'Distance = ',temp_dist
+        !write(*,*)'point ',temp_p
+        !write(*,*)'Fiber point =',temp_pt
+        !if(contact)read(*,*)
         
         
     end subroutine bent_contact
@@ -1184,7 +1195,8 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
          
         
         num_pt=5
-    
+    !  bottom=0.d0-0.25*box_length(3)
+    !  bottom=1.d0
      endpoint1=1.d0
      endpoint2=1.d0
      endpoint1(1:3)=fibers(i,1:3)
@@ -1232,7 +1244,82 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
              dist(5)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
              !bent(i,1)=1
      end if
-     call fiber_mapping(i,dist,endpoint1,endpoint2,cog,p1,p2)
+     if(num_contacts(i).eq.3)then
+        if (norm2(contacts(i,1,2:4)-endpoint1(1:3)).lt.norm2(contacts(i,2,2:4)-endpoint1(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-endpoint1(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint1(1:3))) then
+                dist(1)=norm2(contacts(i,1,2:4)-endpoint1(1:3))
+            else
+                dist(1)=norm2(contacts(i,3,2:4)-endpoint1(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-endpoint1(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint1(1:3))) then
+                dist(1)=norm2(contacts(i,2,2:4)-endpoint1(1:3))
+            else
+                dist(1)=norm2(contacts(i,3,2:4)-endpoint1(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p1(1:3)).lt.norm2(contacts(i,2,2:4)-p1(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p1(1:3)).lt.norm2(contacts(i,3,2:4)-p1(1:3))) then
+                dist(2)=norm2(contacts(i,1,2:4)-p1(1:3))
+            else
+                dist(2)=norm2(contacts(i,3,2:4)-p1(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p1(1:3)).lt.norm2(contacts(i,3,2:4)-p1(1:3))) then
+                dist(2)=norm2(contacts(i,2,2:4)-p1(1:3))
+            else
+                dist(2)=norm2(contacts(i,3,2:4)-p1(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,2,2:4)-cog(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
+                dist(3)=norm2(contacts(i,1,2:4)-cog(1:3))
+            else
+                dist(3)=norm2(contacts(i,3,2:4)-cog(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
+                dist(3)=norm2(contacts(i,2,2:4)-cog(1:3))
+            else
+                dist(3)=norm2(contacts(i,3,2:4)-cog(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p2(1:3)).lt.norm2(contacts(i,2,2:4)-p2(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p2(1:3)).lt.norm2(contacts(i,3,2:4)-p2(1:3))) then
+                dist(4)=norm2(contacts(i,1,2:4)-p2(1:3))
+            else
+                dist(4)=norm2(contacts(i,3,2:4)-p2(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p2(1:3)).lt.norm2(contacts(i,3,2:4)-p2(1:3))) then
+                dist(4)=norm2(contacts(i,2,2:4)-p2(1:3))
+            else
+                dist(4)=norm2(contacts(i,3,2:4)-p2(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,2,2:4)-endpoint2(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint2(1:3))) then
+                dist(5)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
+            else
+                dist(5)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint2(1:3))) then
+                dist(5)=norm2(contacts(i,2,2:4)-endpoint2(1:3))
+            else
+                dist(5)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+            end if
+        end if
+    end if
+     
+
+     !call fiber_mapping(i,dist,endpoint1,endpoint2,cog,p1,p2)
+     
+     call fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)
 
         !Case 1: Touching the ground and one fiber
         if (bending_case.eq.1)then
@@ -1275,7 +1362,7 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
         real(kind=8),dimension(3) :: unit_fiber,unit_PQ,unit_cyl
         real(kind=8),dimension(4) :: axis,test,pt_p1_neg,pt_p1_pos,pt_p2_neg,pt_p2_pos,temp
         real(wp),dimension(5)::fx,y,dist
-        real(wp),dimension(0:10) :: x_new,f_new_default
+        real(wp),dimension(0:40) :: x_new,f_new_default
         
         !real(kind=8),dimension(max_fibers,8)::fibers
         aligned=.false.
@@ -1319,6 +1406,7 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
     p1=matmul(T,p1)
     p2=matmul(T,p2)
     cog=matmul(T,cog)
+    debug=.true.
     if(debug)write(*,*)'Translated Endpoint 1 =',endpoint1
     if(debug)write(*,*)'Translated Endpoint 2 =',endpoint2
     test=0.d0
@@ -1344,6 +1432,7 @@ axis(4)=1.d0
 axis(1:3)=(axis(1:3)/norm2(axis(1:3)))
 !if (debug) if(debug)write(*,*)'Axis',axis
 d=sqrt(axis(2)**2+axis(3)**2)
+
 if(debug)write(*,*)'d =',d
 if(debug)write(*,*)'axis =',axis
 !Defining the rotation matrix
@@ -1380,6 +1469,7 @@ Ry_inv(2,2)=1
 Ry_inv(3,1)=-axis(1)
 Ry_inv(3,3)=d
 Ry_inv(4,4)=1
+
 if (d.gt.0.00001) then
     endpoint1=matmul(Rx,endpoint1)
     endpoint2=matmul(Rx,endpoint2)
@@ -1437,7 +1527,7 @@ y(2)=p1(1)
 y(3)=cog(1)
 y(4)=p2(1)
 y(5)=endpoint2(1)
-write(*,*)'Here 1450'
+write(*,*)'Here 1438'
 else
     if(endpoint2(1).lt.0.d0)then
     neg=.true.
@@ -1469,8 +1559,9 @@ if(debug)write(*,*)'y = ',y
             fx=-fx
         end if
 temp=1.d0
+debug=.false.
 if (aligned)then
-    do m=0,10
+    do m=0,40
         if(debug)write(*,*)'X=',x_new(m)
         if(debug)write(*,*)'fx =',f_new_default(m)
         temp(2)=x_new(m)
@@ -1483,7 +1574,7 @@ if (aligned)then
         if(debug)write(*,*)'Fiber path = ',fiber_path(i,m+1,1:3)
     end do
 else
-        do m=0,10
+        do m=0,40
             if(debug)write(*,*)'X=',x_new(m)
             if(debug)write(*,*)'fx =',f_new_default(m)
            temp(1)=x_new(m)
@@ -1535,6 +1626,7 @@ control_points(i,2,1:3)=p1(1:3)
 control_points(i,3,1:3)=cog(1:3)
 control_points(i,4,1:3)=p2(1:3)
 control_points(i,5,1:3)=endpoint2(1:3)
+write(*,*)control_points(i,1,1:3)
 
 !write(*,*)'Fiber >>>>',fiber_path(i,1,2)
 ! 210 format('_test ',f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' '&
@@ -1563,14 +1655,14 @@ implicit none
      !real(wp),dimension(num_pt)::fx,y
      real(wp),dimension(num_pt)    :: fcn
      type(bspline_1d)          :: s_default
-     real(wp),dimension(0:10),intent(out) :: x_new,f_new_default
+     real(wp),dimension(0:40),intent(out) :: x_new,f_new_default
      !,f_actual
      real(wp)                  :: xval,step_size
      integer(ip)               :: iflag
      !write(*,*)'Here 1'
      x=fx
      fcn = y
-     step_size=(x(num_pt)-x(1))/10
+     step_size=(x(num_pt)-x(1))/40
      !write(*,*)x
      !write(*,*)'x =',x
      !write(*,*)'y =',fcn
@@ -1579,7 +1671,7 @@ implicit none
      if(iflag/=0)write(*,*)'iflag =', iflag
      if (iflag/=0) error stop 'error initializing s_default'
      !write(*,*)'Here 3'
-     do i=0,10
+     do i=0,40
 
         xval     = x(1)+i*step_size
         x_new(i) = xval
@@ -1593,6 +1685,179 @@ implicit none
 
 
 end subroutine sean_tests
+
+subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
+    implicit none
+    real(kind=8),dimension(4) :: p1,p2,endpoint1,endpoint2,cog
+    integer,intent(in):: i
+    !real(kind=8),dimension(max_fibers,1)::bent
+
+    !local parameters
+    real(kind=8),parameter              :: PI=4.0*atan(1.d0)
+    integer(ip)::num_pt,m
+    logical                               ::debug,aligned,neg
+    real(kind=8)                :: d,mag_unit_fiber,length,length_original,lenght_tol
+    real(kind=8)                ::alpha,theta
+    real(kind=8),dimension(4,4) :: T,T_inv
+    real(kind=8),dimension(4,4) ::ba, ba_trans
+    real(kind=8),dimension(3) :: unit_fiber,unit_PQ,unit_cyl
+    real(kind=8),dimension(4) :: axis,test,pt_p1_neg,pt_p1_pos,pt_p2_neg,pt_p2_pos,temp
+    real(wp),dimension(5)::fx,y,dist
+    real(wp),dimension(0:40) :: x_new,f_new_default
+
+    num_pt=5
+    test=0.d0
+    test(3)=-0.1
+    test(4)=1.d0
+    debug=.true.
+    neg=.false.
+    
+    if(debug)write(*,*)'endpoint1 =',endpoint1
+    if(debug)write(*,*)'p1 =',p1
+    if(debug)write(*,*)'cog =',cog
+    if(debug)write(*,*)'p2 =',p2
+    if(debug)write(*,*)'endpoint2',endpoint2
+         
+       
+    length_original=norm2((endpoint1(1:3)-endpoint2(1:3)))
+    lenght_tol=0.0001
+    if(debug)write(*,*)'length =',length_original
+    !Define the translation and inverse translation 
+    T=0.0
+    T(1,1)=1.d0
+    T(1,4)=-endpoint1(1)
+    T(2,4)=-endpoint1(2)
+    T(3,4)=-endpoint1(3)
+    T(2,2)=1.d0
+    T(3,3)=1.d0
+    T(4,4)=1.d0
+    
+    T_inv=0.0
+    T_inv(1,1)=1.d0
+    T_inv(1,4)=endpoint1(1)
+    T_inv(2,4)=endpoint1(2)
+    T_inv(3,4)=endpoint1(3)
+    T_inv(2,2)=1.d0
+    T_inv(3,3)=1.d0
+    T_inv(4,4)=1.d0
+    
+    !Translate end points
+    
+    endpoint1=matmul(T,endpoint1)
+    endpoint2=matmul(T,endpoint2)
+    p1=matmul(T,p1)
+    p2=matmul(T,p2)
+    cog=matmul(T,cog)
+
+    theta=atan(-endpoint2(3)/endpoint2(2))
+
+    alpha=atan(-((cos(theta)*endpoint2(2)-sin(theta)*endpoint2(3))/endpoint2(1)))
+    ba=0.d0
+    ba(1,1)=cos(alpha)
+    ba(1,2)=-sin(alpha)*cos(theta)
+    ba(1,3)=sin(alpha)*sin(theta)
+    ba(2,1)=sin(alpha)
+    ba(2,2)=cos(alpha)*cos(theta)
+    ba(2,3)=-cos(alpha)*sin(theta)
+    
+    ba(3,2)=sin(theta)
+    ba(3,3)=cos(theta)
+    ba(4,4)=1.d0
+    ba_trans=transpose(ba)
+    if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+        endpoint1=matmul(ba,endpoint1)
+        endpoint2=matmul(ba,endpoint2)
+        p1=matmul(ba,p1)
+        p2=matmul(ba,p2)
+        cog=matmul(ba,cog)
+        test=matmul(ba,test)
+    end if
+    if(endpoint2(1).lt.0)neg=.true.
+
+    endpoint1(1:3)=endpoint1(1:3)+test(1:3)*dist(1)!**2.d0
+    p1(1:3)=p1(1:3)+test(1:3)*dist(2)!**2.d0
+    cog(1:3)=cog(1:3)+test(1:3)*dist(3)!**2.d0
+    p2(1:3)=p2(1:3)+test(1:3)*dist(4)!**2.d0
+    endpoint2(1:3)=endpoint2(1:3)+test(1:3)*dist(5)!**2.d0
+    if(neg) then
+        fx(1)=-endpoint1(1)
+        fx(2)=-p1(1)
+        fx(3)=-cog(1)
+        fx(4)=-p2(1)
+        fx(5)=-endpoint2(1)
+
+        y(1)=endpoint1(2)
+        y(2)=p1(2)
+        y(3)=cog(2)
+        y(4)=p2(2)
+        y(5)=endpoint2(2)
+    else
+        fx(1)=endpoint1(1)
+        fx(2)=p1(1)
+        fx(3)=cog(1)
+        fx(4)=p2(1)
+        fx(5)=endpoint2(1)
+
+        y(1)=endpoint1(2)
+        y(2)=p1(2)
+        y(3)=cog(2)
+        y(4)=p2(2)
+        y(5)=endpoint2(2)
+    end if
+
+    if(debug)write(*,*)'>>>>>> X = ',fx
+    if(debug)write(*,*)'y = ',y
+    call sean_tests(fx,y,num_pt,x_new,f_new_default)
+    temp=1.d0
+    do m=0,40
+        if(debug)write(*,*)'X=',x_new(m)
+        if(debug)write(*,*)'fx =',f_new_default(m)
+        if (neg) then
+            temp(1)=-x_new(m)
+        else
+            temp(1)=x_new(m)
+        end if
+        temp(2)=f_new_default(m)
+        temp(3)=0.d0
+        if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+            temp=matmul(ba_trans,temp)
+        end if
+        temp=matmul(T_inv,temp)
+        fiber_path(i,m+1,1:3)=temp(1:3)
+        if(debug)write(*,*)'Fiber path = ',fiber_path(i,m+1,1:3)
+    end do
+    if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+        endpoint1=matmul(ba_trans,endpoint1)
+        endpoint2=matmul(ba_trans,endpoint2)
+        p1=matmul(ba_trans,p1)
+        p2=matmul(ba_trans,p2)
+        cog=matmul(ba_trans,cog)
+    end if
+    
+    endpoint1=matmul(T_inv,endpoint1)
+    endpoint2=matmul(T_inv,endpoint2)
+    p1=matmul(T_inv,p1)
+    p2=matmul(T_inv,p2)
+    cog=matmul(T_inv,cog)
+    
+    if(debug)write(*,*)'endpoint1 =',endpoint1
+    if(debug)write(*,*)'P 1 =',p1
+    if(debug)write(*,*)'P 2 =',p2
+    if(debug)write(*,*)'COG =',cog
+    if(debug)write(*,*)'endpoint2',endpoint2
+    debug=.false.
+
+    fibers(i,1:3)=endpoint1(1:3)
+    fibers(i,5:7)=endpoint2(1:3)
+    control_points(i,1,1:3)=endpoint1(1:3)
+    control_points(i,2,1:3)=p1(1:3)
+    control_points(i,3,1:3)=cog(1:3)
+    control_points(i,4,1:3)=p2(1:3)
+    control_points(i,5,1:3)=endpoint2(1:3)
+
+
+
+end subroutine fiber_mapping_alt
 
 end module fibers_place
 
