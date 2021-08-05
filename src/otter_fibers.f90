@@ -99,7 +99,7 @@ module fibers_place
         ! Estimate max number of fibers as 4*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
         ! Adding 25% to account for basal boundary amount.
         max_fibers=5*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
-        max_fibers=4
+        !max_fibers=3
         ! set up for periodic images
         max_fibers=9*max_fibers
         write(out_unit,*) ''
@@ -126,7 +126,7 @@ module fibers_place
         allocate(num_contacts(max_fibers))
         allocate(bent(max_fibers))
         allocate(fiber_path(max_fibers,41,3))
-        allocate(control_points(max_fibers,5,3))
+        allocate(control_points(max_fibers,11,3))
         allocate(bent_to_stright(max_fibers,41,1))
         bent=0
 
@@ -208,34 +208,34 @@ module fibers_place
                     fibers(i,6)=fibers(i,2)+fibers(i,9)*sin(dir_deg/360.d0*2.d0*PI)
                 end if
                 !<<<<<<<<<<<<<<<<<<<<<<<<ADDED FOR TESTING>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                if (i.eq.1)then
-                fibers(i,1)=1.d0
-                fibers(i,2)=1.d0
+                ! if (i.eq.1)then
+                ! fibers(i,1)=1.d0
+                ! fibers(i,2)=1.d0
                                            
-                fibers(i,5)=fibers(i,1)
-                fibers(i,6)=fibers(i,2)+fibers(i,9)
-                end if
-                if(i.eq.10)then
-                    fibers(i,1)=10.d0
-                fibers(i,2)=1.d0
+                ! fibers(i,5)=fibers(i,1)
+                ! fibers(i,6)=fibers(i,2)+fibers(i,9)
+                ! end if
+                ! if(i.eq.10)then
+                !     fibers(i,1)=5.d0
+                ! fibers(i,2)=1.d0
                                            
-                fibers(i,5)=fibers(i,1)
-                fibers(i,6)=fibers(i,2)+fibers(i,9)
-                end if
-                if (i.eq.19)then
-                    fibers(i,1)=25.d0
-                    fibers(i,2)=1.d0
+                ! fibers(i,5)=fibers(i,1)
+                ! fibers(i,6)=fibers(i,2)+fibers(i,9)
+                ! end if
+                ! if (i.eq.19)then
+                !     fibers(i,1)=25.d0
+                !     fibers(i,2)=1.d0
                                                
-                    fibers(i,5)=fibers(i,1)
-                    fibers(i,6)=fibers(i,2)+fibers(i,9)
-                end if
-                if (i.eq.28)then
-                    fibers(i,1)=0.d0
-                    fibers(i,2)=20.d0
+                !     fibers(i,5)=fibers(i,1)
+                !     fibers(i,6)=fibers(i,2)+fibers(i,9)
+                ! end if
+                ! if (i.eq.19)then
+                !     fibers(i,1)=0.d0
+                !     fibers(i,2)=20.d0
                                                
-                    fibers(i,6)=fibers(i,2)
-                    fibers(i,5)=fibers(i,1)+fibers(i,9)
-                end if
+                !     fibers(i,6)=fibers(i,2)
+                !     fibers(i,5)=fibers(i,1)+fibers(i,9)
+                ! end if
 
                 
 
@@ -250,7 +250,9 @@ module fibers_place
                     ! Check for contacts
                     stop_slide=.false.
                     stop_glide(:)=.false.
+                    if(debug)write(*,*)"entering fiber contact"
                     call fiber_contact(i,max_rad,stop_slide,stop_glide)
+                    if(debug)write(*,*)"exiting fiber contact"
                     if (debug) write(*,*) 'Re-entered program fibers_place from fiber_contact'
 
                     ! MOVE FIBER!
@@ -259,7 +261,9 @@ module fibers_place
                 end do ! dropping loop
                 if (contacts(i,1,9).eq.4)bending_case=1
                 if (contacts(i,1,1).gt.0.d0) then
+                    if(debug)write(*,*)"entering bending test"
                     call bending_test(i,bending_case)
+                    if(debug)write(*,*)"exiting bending test"
                     bent(i)=1
                 end if
 
@@ -303,7 +307,7 @@ module fibers_place
                             end if
                         end do
                     end do
-                
+                    if(debug)write(*,*)"here 308"
                 if (.false.) then
                     write(*,*) ' Do you want to stop? 1=yes'
                     read(*,*) j
@@ -327,12 +331,14 @@ module fibers_place
             
             202 format('_sphere ',f0.3,',',f0.3,',',f0.3,' ',f0.3)
             203 format('_cone ',f0.3,',',f0.3,',',f0.3,' ',f0.3,' T ',f0.3,' A ',f0.3,',',f0.3,',',f0.3)
-            201 format('_five ',f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' '&
+            201 format('_eleven ',f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' '&
             ,f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' ',f0.3,','&
-            ,f0.3,',',f0.3,' ',f0.3)
+            ,f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' '&
+            ,f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' ',f0.3,',',f0.3,',',f0.3,' '&
+            ,f0.3,',',f0.3,',',f0.3,' ',f0.3)
             write(scr_unit,'(a)') '-osnap off'
             write(scr_unit,'(a)') '_zoom -300,-300,-300 500,500,500'
-            union=0
+            union=1
             do j=1,i-1
 
                 ! Check whether fiber has a least one end in box...
@@ -348,9 +354,11 @@ module fibers_place
                     if(debug)write(*,*)'[Otter_fibers 352] fiber number',j
                 else
                     if (in_box) write(scr_unit,201) control_points(j,1,1:3),control_points(j,2,1:3),&
-                    control_points(j,3,1:3),control_points(j,4,1:3),control_points(j,5,1:3), fibers(j,4)
+                    control_points(j,3,1:3),control_points(j,4,1:3),control_points(j,5,1:3),&
+                    control_points(j,6,1:3),control_points(j,7,1:3),control_points(j,8,1:3),&
+                    control_points(j,9,1:3),control_points(j,10,1:3),control_points(j,11,1:3),fibers(j,4)
                 end if
-                if (j.eq.50*union) then
+                if (j.eq.500*union) then
                     write(scr_unit,'(a)') '_union all '
                     union=union+1
                 end if
@@ -491,7 +499,7 @@ module fibers_place
         !bent=0.d0
         num_contacts(i)=0
         contacts(i,:,:)=0
-
+        debug=.false.
         if(debug) write(*,*) 'In fiber_contact...'
 
         ! Check gross contact
@@ -509,9 +517,9 @@ module fibers_place
             ! check fine contact...
             if (contact) then
                 if (bent(j).eq.1) then
-                   
+                    if(debug)write(*,*)'entering bent_contant'
                     call bent_contact(i,j,contact,contact_pt3D)
-                    !write(*,*)'Here 1'
+                    if(debug)write(*,*)'exiting bent_contant'
                 else
                     if (debug) write (*,*) ' Check Fine contact: ',i,j
                     contact=.false.
@@ -649,7 +657,7 @@ module fibers_place
 
         bottom=0.d0-0.25*box_length(3)
         !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<TESTING>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        bottom=1.d0!5.d-1
+        ! bottom=1.d0!5.d-1
         !!!!!!!!  SHOULD ONLY BE FOR TEST_GLIDE....
         !bottom=0
         do k=3,7,4
@@ -666,7 +674,7 @@ module fibers_place
                 !read(*,*)
             end if
         end do
-
+        debug=.false.
     end subroutine
 
     function fiber_glide(i, friction, stop_glide) result(delta_pos)
@@ -1189,8 +1197,8 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
         integer, intent(in)                 :: i
         integer                             :: bending_case,num_pt
         real(kind=DBL)                      :: bottom
-        real(kind=DBL),dimension(4)         :: p1,p2,endpoint1,endpoint2,cog
-        real(wp),dimension(5)               :: dist
+        real(kind=DBL),dimension(4)         :: p1,p2,p3,p4,p5,p6,p7,p8,endpoint1,endpoint2,cog
+        real(wp),dimension(11)               :: dist
         
          
         
@@ -1202,11 +1210,23 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
      endpoint1(1:3)=fibers(i,1:3)
      endpoint2(1:3)=fibers(i,5:7)
      p1=1.d0
-     p1(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/4.d0)
      p2=1.d0
-     p2(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(4.0/3.0))
+     p3=1.d0
+     p4=1.d0
+     p5=1.d0
+     p6=1.d0
+     p7=1.d0
+     p8=1.d0
      cog=1.d0
+     p1(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/10.d0)
+     p2(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/2.d0))
+     p3(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/3.d0))
+     p4(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/4.d0))
      cog(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/2.d0)
+     p5(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/6.d0))
+     p6(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/7.d0))
+     p7(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/8.d0))
+     p8(1:3)=endpoint1(1:3)+((endpoint2(1:3)-endpoint1(1:3))/(10.d0/9.d0))
      dist=0.d0
 
      if(num_contacts(i).eq.2)then
@@ -1215,36 +1235,87 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
          else
               dist(1)=norm2(contacts(i,2,2:4)-endpoint1(1:3))
          end if
+
          if (norm2(contacts(i,1,2:4)-p1(1:3)).lt.norm2(contacts(i,2,2:4)-p1(1:3))) then        
             dist(2)=norm2(contacts(i,1,2:4)-p1(1:3))
-       else
+         else
             dist(2)=norm2(contacts(i,2,2:4)-p1(1:3))
-       end if
-         if (norm2(cog(1:3)-contacts(i,1,2:4)).lt.norm2(cog(1:3)-contacts(i,2,2:4))) then
-              dist(3)=norm2(cog(1:3)-contacts(i,1,2:4))
-         else
-              dist(3)=norm2(cog(1:3)-contacts(i,2,2:4))
          end if
+
          if (norm2(contacts(i,1,2:4)-p2(1:3)).lt.norm2(contacts(i,2,2:4)-p2(1:3))) then        
-            dist(4)=norm2(contacts(i,1,2:4)-p2(1:3))
-       else
-            dist(4)=norm2(contacts(i,2,2:4)-p2(1:3))
-       end if
-         if(norm2(endpoint2(1:3)-p1(1:3)).lt.norm2(endpoint2(1:3)-p2(1:3))) then
-                 dist(5)=norm2(endpoint2(1:3)-p1(1:3))
+            dist(3)=norm2(contacts(i,1,2:4)-p2(1:3))
          else
-                 dist(5)=norm2(endpoint2(1:3)-p2(1:3))
+            dist(3)=norm2(contacts(i,2,2:4)-p2(1:3))
+         end if
+
+         if (norm2(contacts(i,1,2:4)-p3(1:3)).lt.norm2(contacts(i,2,2:4)-p3(1:3))) then        
+            dist(4)=norm2(contacts(i,1,2:4)-p3(1:3))
+         else
+            dist(4)=norm2(contacts(i,2,2:4)-p3(1:3))
+         end if
+
+         if (norm2(contacts(i,1,2:4)-p4(1:3)).lt.norm2(contacts(i,2,2:4)-p4(1:3))) then        
+            dist(5)=norm2(contacts(i,1,2:4)-p4(1:3))
+         else
+            dist(5)=norm2(contacts(i,2,2:4)-p4(1:3))
+         end if
+
+         if (norm2(cog(1:3)-contacts(i,1,2:4)).lt.norm2(cog(1:3)-contacts(i,2,2:4))) then
+            dist(6)=norm2(cog(1:3)-contacts(i,1,2:4))
+         else
+            dist(6)=norm2(cog(1:3)-contacts(i,2,2:4))
+         end if
+       
+         if (norm2(contacts(i,1,2:4)-p5(1:3)).lt.norm2(contacts(i,2,2:4)-p5(1:3))) then        
+            dist(7)=norm2(contacts(i,1,2:4)-p5(1:3))
+         else
+            dist(7)=norm2(contacts(i,2,2:4)-p5(1:3))
+         end if
+
+         if (norm2(contacts(i,1,2:4)-p6(1:3)).lt.norm2(contacts(i,2,2:4)-p6(1:3))) then        
+            dist(8)=norm2(contacts(i,1,2:4)-p6(1:3))
+         else
+            dist(8)=norm2(contacts(i,2,2:4)-p6(1:3))
+         end if
+
+         if (norm2(contacts(i,1,2:4)-p7(1:3)).lt.norm2(contacts(i,2,2:4)-p7(1:3))) then        
+            dist(9)=norm2(contacts(i,1,2:4)-p7(1:3))
+         else
+            dist(9)=norm2(contacts(i,2,2:4)-p7(1:3))
+         end if
+
+         if (norm2(contacts(i,1,2:4)-p8(1:3)).lt.norm2(contacts(i,2,2:4)-p8(1:3))) then        
+            dist(10)=norm2(contacts(i,1,2:4)-p8(1:3))
+         else
+            dist(10)=norm2(contacts(i,2,2:4)-p8(1:3))
+         end if
+
+         if(norm2(endpoint2(1:3)-contacts(i,1,2:4)).lt.norm2(endpoint2(1:3)-contacts(i,2,2:4))) then
+            dist(11)=norm2(endpoint2(1:3)-contacts(i,1,2:4))
+            if(dist(11).gt.40)write(*,*)'here 1295'
+         else
+            dist(11)=norm2(endpoint2(1:3)-contacts(i,2,2:4))
+            if(dist(11).gt.40)write(*,*)'here 1298'
          end if
          !bent(i,1)=1
      end if
      if(num_contacts(i).eq.1)then 
              dist(1)=norm2(contacts(i,1,2:4)-endpoint1(1:3))
              dist(2)=norm2(contacts(i,1,2:4)-p1(1:3))
-             dist(4)=norm2(contacts(i,1,2:4)-p2(1:3))
-             dist(5)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
+             dist(3)=norm2(contacts(i,1,2:4)-p2(1:3))
+             dist(4)=norm2(contacts(i,1,2:4)-p3(1:3))
+             dist(5)=norm2(contacts(i,1,2:4)-p4(1:3))
+             dist(6)=norm2(contacts(i,1,2:4)-cog(1:3))
+             dist(7)=norm2(contacts(i,1,2:4)-p5(1:3))
+             dist(8)=norm2(contacts(i,1,2:4)-p6(1:3))
+             dist(9)=norm2(contacts(i,1,2:4)-p7(1:3))
+             dist(10)=norm2(contacts(i,1,2:4)-p8(1:3))
+             dist(11)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
+             if(dist(11).gt.40)write(*,*)'here 1314'
              !bent(i,1)=1
      end if
      if(num_contacts(i).eq.3)then
+        if(debug)write(*,*)'Contact point =',contacts(i,3,2:4)
         if (norm2(contacts(i,1,2:4)-endpoint1(1:3)).lt.norm2(contacts(i,2,2:4)-endpoint1(1:3))) then 
             if (norm2(contacts(i,1,2:4)-endpoint1(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint1(1:3))) then
                 dist(1)=norm2(contacts(i,1,2:4)-endpoint1(1:3))
@@ -1273,83 +1344,152 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
             end if
         end if
 
-        if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,2,2:4)-cog(1:3))) then 
-            if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
-                dist(3)=norm2(contacts(i,1,2:4)-cog(1:3))
-            else
-                dist(3)=norm2(contacts(i,3,2:4)-cog(1:3))
-            end if
-        else
-            if (norm2(contacts(i,2,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
-                dist(3)=norm2(contacts(i,2,2:4)-cog(1:3))
-            else
-                dist(3)=norm2(contacts(i,3,2:4)-cog(1:3))
-            end if
-        end if
-
         if (norm2(contacts(i,1,2:4)-p2(1:3)).lt.norm2(contacts(i,2,2:4)-p2(1:3))) then 
             if (norm2(contacts(i,1,2:4)-p2(1:3)).lt.norm2(contacts(i,3,2:4)-p2(1:3))) then
-                dist(4)=norm2(contacts(i,1,2:4)-p2(1:3))
+                dist(3)=norm2(contacts(i,1,2:4)-p2(1:3))
             else
-                dist(4)=norm2(contacts(i,3,2:4)-p2(1:3))
+                dist(3)=norm2(contacts(i,3,2:4)-p2(1:3))
             end if
         else
             if (norm2(contacts(i,2,2:4)-p2(1:3)).lt.norm2(contacts(i,3,2:4)-p2(1:3))) then
-                dist(4)=norm2(contacts(i,2,2:4)-p2(1:3))
+                dist(3)=norm2(contacts(i,2,2:4)-p2(1:3))
             else
-                dist(4)=norm2(contacts(i,3,2:4)-p2(1:3))
+                dist(3)=norm2(contacts(i,3,2:4)-p2(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p3(1:3)).lt.norm2(contacts(i,2,2:4)-p3(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p3(1:3)).lt.norm2(contacts(i,3,2:4)-p3(1:3))) then
+                dist(4)=norm2(contacts(i,1,2:4)-p3(1:3))
+            else
+                dist(4)=norm2(contacts(i,3,2:4)-p3(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p3(1:3)).lt.norm2(contacts(i,3,2:4)-p3(1:3))) then
+                dist(4)=norm2(contacts(i,2,2:4)-p3(1:3))
+            else
+                dist(4)=norm2(contacts(i,3,2:4)-p3(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p4(1:3)).lt.norm2(contacts(i,2,2:4)-p4(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p4(1:3)).lt.norm2(contacts(i,3,2:4)-p4(1:3))) then
+                dist(5)=norm2(contacts(i,1,2:4)-p4(1:3))
+            else
+                dist(5)=norm2(contacts(i,3,2:4)-p4(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p4(1:3)).lt.norm2(contacts(i,3,2:4)-p4(1:3))) then
+                dist(5)=norm2(contacts(i,2,2:4)-p4(1:3))
+            else
+                dist(5)=norm2(contacts(i,3,2:4)-p4(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,2,2:4)-cog(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
+                dist(6)=norm2(contacts(i,1,2:4)-cog(1:3))
+            else
+                dist(6)=norm2(contacts(i,3,2:4)-cog(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-cog(1:3)).lt.norm2(contacts(i,3,2:4)-cog(1:3))) then
+                dist(6)=norm2(contacts(i,2,2:4)-cog(1:3))
+            else
+                dist(6)=norm2(contacts(i,3,2:4)-cog(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p5(1:3)).lt.norm2(contacts(i,2,2:4)-p5(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p5(1:3)).lt.norm2(contacts(i,3,2:4)-p5(1:3))) then
+                dist(7)=norm2(contacts(i,1,2:4)-p5(1:3))
+            else
+                dist(7)=norm2(contacts(i,3,2:4)-p5(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p5(1:3)).lt.norm2(contacts(i,3,2:4)-p5(1:3))) then
+                dist(7)=norm2(contacts(i,2,2:4)-p5(1:3))
+            else
+                dist(7)=norm2(contacts(i,3,2:4)-p5(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p6(1:3)).lt.norm2(contacts(i,2,2:4)-p6(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p6(1:3)).lt.norm2(contacts(i,3,2:4)-p6(1:3))) then
+                dist(8)=norm2(contacts(i,1,2:4)-p6(1:3))
+            else
+                dist(8)=norm2(contacts(i,3,2:4)-p6(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p6(1:3)).lt.norm2(contacts(i,3,2:4)-p6(1:3))) then
+                dist(8)=norm2(contacts(i,2,2:4)-p6(1:3))
+            else
+                dist(8)=norm2(contacts(i,3,2:4)-p6(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p7(1:3)).lt.norm2(contacts(i,2,2:4)-p7(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p7(1:3)).lt.norm2(contacts(i,3,2:4)-p7(1:3))) then
+                dist(9)=norm2(contacts(i,1,2:4)-p7(1:3))
+            else
+                dist(9)=norm2(contacts(i,3,2:4)-p7(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p7(1:3)).lt.norm2(contacts(i,3,2:4)-p7(1:3))) then
+                dist(9)=norm2(contacts(i,2,2:4)-p7(1:3))
+            else
+                dist(9)=norm2(contacts(i,3,2:4)-p7(1:3))
+            end if
+        end if
+
+        if (norm2(contacts(i,1,2:4)-p8(1:3)).lt.norm2(contacts(i,2,2:4)-p8(1:3))) then 
+            if (norm2(contacts(i,1,2:4)-p8(1:3)).lt.norm2(contacts(i,3,2:4)-p8(1:3))) then
+                dist(10)=norm2(contacts(i,1,2:4)-p8(1:3))
+            else
+                dist(10)=norm2(contacts(i,3,2:4)-p8(1:3))
+            end if
+        else
+            if (norm2(contacts(i,2,2:4)-p8(1:3)).lt.norm2(contacts(i,3,2:4)-p8(1:3))) then
+                dist(10)=norm2(contacts(i,2,2:4)-p8(1:3))
+            else
+                dist(10)=norm2(contacts(i,3,2:4)-p8(1:3))
             end if
         end if
 
         if (norm2(contacts(i,1,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,2,2:4)-endpoint2(1:3))) then 
             if (norm2(contacts(i,1,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint2(1:3))) then
-                dist(5)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
+                dist(11)=norm2(contacts(i,1,2:4)-endpoint2(1:3))
+                if(dist(11).gt.40)write(*,*)'here 1462'
             else
-                dist(5)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+                dist(11)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+                if(dist(11).gt.40)write(*,*)'here 1465'
             end if
         else
             if (norm2(contacts(i,2,2:4)-endpoint2(1:3)).lt.norm2(contacts(i,3,2:4)-endpoint2(1:3))) then
-                dist(5)=norm2(contacts(i,2,2:4)-endpoint2(1:3))
+                dist(11)=norm2(contacts(i,2,2:4)-endpoint2(1:3))
+                if(dist(11).gt.40)write(*,*)'here 1470'
             else
-                dist(5)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+                dist(11)=norm2(contacts(i,3,2:4)-endpoint2(1:3))
+                if(dist(11).gt.40)write(*,*)'here 1473'
             end if
         end if
     end if
-     
+    if(debug)write(*,*)'dist =',dist
+    if(dist(11).gt.40)write(*,*)'here 1'
 
      !call fiber_mapping(i,dist,endpoint1,endpoint2,cog,p1,p2)
-     
-     call fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)
+     if(debug)write(*,*)"entering fiber_mapping_alt"
+     call fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2,p3,p4,p5,p6,p7,p8)
+     if(debug)write(*,*)"exiting fiber_mapping_alt"
 
-        !Case 1: Touching the ground and one fiber
-        if (bending_case.eq.1)then
-            
-
-
-        ! write(*,*)'[Bending Test] i =',i
-        ! write(*,*)'[Bending Test] num_contact =',num_contacts(i)
-        ! write(*,*)'[Bending Test] contact pt =',contacts(i,1,1)
-        ! write(*,*)'[Bending Test] contact pt =',contacts(i,1,2:4)
-        ! write(*,*)'[Bending Test] contact pt =',contacts(i,2,2:4)
-        ! write(*,*)'[Bending Test] contact case =',contacts(i,1,9)
-
-        
-        !Case 2: Touching two fibers
-
-        !Case 3: Touching three fibers
-        
-        
-        end if
-         
-        !write(*,*)'Fiber bending_test',fiber_path(i,1,2)
        
        
     end subroutine bending_test
 
 
-    subroutine fiber_mapping(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
+    subroutine fiber_mapping(i,dist,endpoint1,endpoint2,cog,p1,p2,p3,p4,p5,p6,p7,p8)!,bent)
         implicit none
-        real(kind=8),dimension(4) :: p1,p2,endpoint1,endpoint2,cog
+        real(kind=8),dimension(4) :: p1,p2,p3,p4,p5,p6,p7,p8,endpoint1,endpoint2,cog
         integer,intent(in):: i
         !real(kind=8),dimension(max_fibers,1)::bent
     
@@ -1361,14 +1501,14 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
         real(kind=8),dimension(4,4) :: T,T_inv,Rx, Rx_inv, Ry, Ry_inv,Rz,Rz_neg
         real(kind=8),dimension(3) :: unit_fiber,unit_PQ,unit_cyl
         real(kind=8),dimension(4) :: axis,test,pt_p1_neg,pt_p1_pos,pt_p2_neg,pt_p2_pos,temp
-        real(wp),dimension(5)::fx,y,dist
+        real(wp),dimension(11)::fx,y,dist
         real(wp),dimension(0:40) :: x_new,f_new_default
         
         !real(kind=8),dimension(max_fibers,8)::fibers
         aligned=.false.
         neg=.false.
         debug=.false.
-        num_pt=5
+        num_pt=11
     
     
     if(debug)write(*,*)'endpoint1 =',endpoint1
@@ -1686,9 +1826,9 @@ implicit none
 
 end subroutine sean_tests
 
-subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
+subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2,p3,p4,p5,p6,p7,p8)!,bent)
     implicit none
-    real(kind=8),dimension(4) :: p1,p2,endpoint1,endpoint2,cog
+    real(kind=8),dimension(4) :: p1,p2,p3,p4,p5,p6,p7,p8,endpoint1,endpoint2,cog
     integer,intent(in):: i
     !real(kind=8),dimension(max_fibers,1)::bent
 
@@ -1702,15 +1842,16 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
     real(kind=8),dimension(4,4) ::ba, ba_trans
     real(kind=8),dimension(3) :: unit_fiber,unit_PQ,unit_cyl
     real(kind=8),dimension(4) :: axis,test,pt_p1_neg,pt_p1_pos,pt_p2_neg,pt_p2_pos,temp
-    real(wp),dimension(5)::fx,y,dist
+    real(wp),dimension(11)::fx,y,dist
     real(wp),dimension(0:40) :: x_new,f_new_default
 
     num_pt=5
     test=0.d0
     test(3)=-0.1
     test(4)=1.d0
-    debug=.true.
+    !debug=.true.
     neg=.false.
+    aligned=.true.
     
     if(debug)write(*,*)'endpoint1 =',endpoint1
     if(debug)write(*,*)'p1 =',p1
@@ -1747,8 +1888,14 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
     endpoint2=matmul(T,endpoint2)
     p1=matmul(T,p1)
     p2=matmul(T,p2)
+    p3=matmul(T,p3)
+    p4=matmul(T,p4)
+    p5=matmul(T,p5)
+    p6=matmul(T,p6)
+    p7=matmul(T,p7)
+    p8=matmul(T,p8)
     cog=matmul(T,cog)
-
+    if(debug)write(*,*)'endpoint2',endpoint2
     theta=atan(-endpoint2(3)/endpoint2(2))
 
     alpha=atan(-((cos(theta)*endpoint2(2)-sin(theta)*endpoint2(3))/endpoint2(1)))
@@ -1764,11 +1911,18 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
     ba(3,3)=cos(theta)
     ba(4,4)=1.d0
     ba_trans=transpose(ba)
-    if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+    if (endpoint2(2).gt.0.0.and.endpoint2(3).ne.0.0)then
+        aligned=.false.
         endpoint1=matmul(ba,endpoint1)
         endpoint2=matmul(ba,endpoint2)
         p1=matmul(ba,p1)
         p2=matmul(ba,p2)
+        p3=matmul(ba,p3)
+        p4=matmul(ba,p4)
+        p5=matmul(ba,p5)
+        p6=matmul(ba,p6)
+        p7=matmul(ba,p7)
+        p8=matmul(ba,p8)
         cog=matmul(ba,cog)
         test=matmul(ba,test)
     end if
@@ -1776,33 +1930,65 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
 
     endpoint1(1:3)=endpoint1(1:3)+test(1:3)*dist(1)!**2.d0
     p1(1:3)=p1(1:3)+test(1:3)*dist(2)!**2.d0
-    cog(1:3)=cog(1:3)+test(1:3)*dist(3)!**2.d0
-    p2(1:3)=p2(1:3)+test(1:3)*dist(4)!**2.d0
-    endpoint2(1:3)=endpoint2(1:3)+test(1:3)*dist(5)!**2.d0
+    p2(1:3)=p2(1:3)+test(1:3)*dist(3)
+    p3(1:3)=p3(1:3)+test(1:3)*dist(4)
+    p4(1:3)=p4(1:3)+test(1:3)*dist(5)
+    cog(1:3)=cog(1:3)+test(1:3)*dist(6)!**2.d0
+    p5(1:3)=p5(1:3)+test(1:3)*dist(7)
+    p6(1:3)=p6(1:3)+test(1:3)*dist(8)!**2.d0
+    p7(1:3)=p7(1:3)+test(1:3)*dist(9)
+    p8(1:3)=p8(1:3)+test(1:3)*dist(10)
+    endpoint2(1:3)=endpoint2(1:3)+test(1:3)*dist(11)!**2.d0
+    if(debug)write(*,*)'dist 11',dist(11)
+    if(debug)write(*,*)'endpoint2',endpoint2
     if(neg) then
         fx(1)=-endpoint1(1)
         fx(2)=-p1(1)
-        fx(3)=-cog(1)
-        fx(4)=-p2(1)
-        fx(5)=-endpoint2(1)
+        fx(3)=-p2(1)
+        fx(4)=-p3(1)
+        fx(5)=-p4(1)
+        fx(6)=-cog(1)
+        fx(7)=-p5(1)
+        fx(8)=-p6(1)
+        fx(9)=-p7(1)
+        fx(10)=-p8(1)
+        fx(11)=-endpoint2(1)
 
         y(1)=endpoint1(2)
         y(2)=p1(2)
-        y(3)=cog(2)
-        y(4)=p2(2)
-        y(5)=endpoint2(2)
+        y(3)=p2(2)
+        y(4)=p3(2)
+        y(5)=p4(2)
+        y(6)=cog(2)
+        y(7)=p5(2)
+        y(8)=p6(2)
+        y(9)=p7(2)
+        y(10)=p8(2)
+        y(11)=endpoint2(2)
     else
         fx(1)=endpoint1(1)
         fx(2)=p1(1)
-        fx(3)=cog(1)
-        fx(4)=p2(1)
-        fx(5)=endpoint2(1)
+        fx(3)=p2(1)
+        fx(4)=p3(1)
+        fx(5)=p4(1)
+        fx(6)=cog(1)
+        fx(7)=p5(1)
+        fx(8)=p6(1)
+        fx(9)=p7(1)
+        fx(10)=p8(1)
+        fx(11)=endpoint2(1)
 
         y(1)=endpoint1(2)
         y(2)=p1(2)
-        y(3)=cog(2)
-        y(4)=p2(2)
-        y(5)=endpoint2(2)
+        y(3)=p2(2)
+        y(4)=p3(2)
+        y(5)=p4(2)
+        y(6)=cog(2)
+        y(7)=p5(2)
+        y(8)=p6(2)
+        y(9)=p7(2)
+        y(10)=p8(2)
+        y(11)=endpoint2(2)
     end if
 
     if(debug)write(*,*)'>>>>>> X = ',fx
@@ -1819,18 +2005,25 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
         end if
         temp(2)=f_new_default(m)
         temp(3)=0.d0
-        if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+        if (.not.aligned)then
             temp=matmul(ba_trans,temp)
         end if
         temp=matmul(T_inv,temp)
         fiber_path(i,m+1,1:3)=temp(1:3)
         if(debug)write(*,*)'Fiber path = ',fiber_path(i,m+1,1:3)
     end do
-    if (endpoint2(2).gt.0.0.and.endpoint2(2).gt.0.0)then
+    if(debug)write(*,*)'endpoint2',endpoint2
+    if (.not.aligned)then
         endpoint1=matmul(ba_trans,endpoint1)
         endpoint2=matmul(ba_trans,endpoint2)
         p1=matmul(ba_trans,p1)
         p2=matmul(ba_trans,p2)
+        p3=matmul(ba_trans,p3)
+        p4=matmul(ba_trans,p4)
+        p5=matmul(ba_trans,p5)
+        p6=matmul(ba_trans,p6)
+        p7=matmul(ba_trans,p7)
+        p8=matmul(ba_trans,p8)
         cog=matmul(ba_trans,cog)
     end if
     
@@ -1838,6 +2031,12 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
     endpoint2=matmul(T_inv,endpoint2)
     p1=matmul(T_inv,p1)
     p2=matmul(T_inv,p2)
+    p3=matmul(T_inv,p3)
+    p4=matmul(T_inv,p4)
+    p5=matmul(T_inv,p5)
+    p6=matmul(T_inv,p6)
+    p7=matmul(T_inv,p7)
+    p8=matmul(T_inv,p8)
     cog=matmul(T_inv,cog)
     
     if(debug)write(*,*)'endpoint1 =',endpoint1
@@ -1845,15 +2044,22 @@ subroutine fiber_mapping_alt(i,dist,endpoint1,endpoint2,cog,p1,p2)!,bent)
     if(debug)write(*,*)'P 2 =',p2
     if(debug)write(*,*)'COG =',cog
     if(debug)write(*,*)'endpoint2',endpoint2
-    debug=.false.
-
+    
     fibers(i,1:3)=endpoint1(1:3)
     fibers(i,5:7)=endpoint2(1:3)
     control_points(i,1,1:3)=endpoint1(1:3)
     control_points(i,2,1:3)=p1(1:3)
-    control_points(i,3,1:3)=cog(1:3)
-    control_points(i,4,1:3)=p2(1:3)
-    control_points(i,5,1:3)=endpoint2(1:3)
+    control_points(i,3,1:3)=p2(1:3)
+    control_points(i,4,1:3)=p3(1:3)
+    control_points(i,5,1:3)=p4(1:3)
+    control_points(i,6,1:3)=cog(1:3)
+    control_points(i,7,1:3)=p5(1:3)
+    control_points(i,8,1:3)=p6(1:3)
+    control_points(i,9,1:3)=p7(1:3)
+    control_points(i,10,1:3)=p8(1:3)
+    control_points(i,11,1:3)=endpoint2(1:3)
+
+    !if(abs(control_points(i,11,3)-control_points(i,1,3)).gt.5)write(*,*)control_points(i,:,3)
 
 
 
