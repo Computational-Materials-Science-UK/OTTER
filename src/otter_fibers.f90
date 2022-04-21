@@ -62,7 +62,7 @@ module fibers_place
         integer                         ::  i,j,k, periodic_added, periodic_j, periodic_i, &
                                             max_fibers, go_glide, &
                                             scr_unit,dat_unit,rve_scr_unit,rve_nnc_unit, &
-                                            rve,num_bad,excess_num,bending_case,union
+                                            rve,num_bad,excess_num,bending_case,union,debug_counter
         character(len=200)              ::  full_scr_name,full_nnc_name,full_name, &
                                             full_rves_batch_name,full_nncd_name, &
                                             saveas,exportstl
@@ -98,7 +98,7 @@ module fibers_place
         end do
         ! Estimate max number of fibers as 4*big_box_vol/cylindrical plate containing smallest cylinder... no idea if this is any good...
         ! Adding 25% to account for basal boundary amount.
-        max_fibers=5*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
+        max_fibers=6*int(big_box_vol/( PI*(min_length/2.)**2.*(2.*min_rad) ))
         !max_fibers=3
         ! set up for periodic images
         max_fibers=9*max_fibers
@@ -122,7 +122,7 @@ module fibers_place
         !       9   - contact_case: 0 (side-to-side), 1 (contacting end to contacted side),
         !             2 (contacting side to contacted end), 3 (end-to-end)
         ! Each fiber has 2 (3 with rolling) plus those on top contacts..., 
-        allocate(contacts(max_fibers,7,9))
+        allocate(contacts(max_fibers,9,9))
         allocate(num_contacts(max_fibers))
         allocate(bent(max_fibers))
         allocate(fiber_path(max_fibers,41,3))
@@ -245,11 +245,13 @@ module fibers_place
                 ! Drop fiber until contact, or hits bottom.
                 stopped=.false.
                 if (debug) write(out_unit,*) 'stop_glide: ',stop_glide(:)
+                debug_counter=1
                 do while (.not. stopped)
-
+                    
                     ! Check for contacts
                     stop_slide=.false.
                     stop_glide(:)=.false.
+                    !if(i.gt.2358.and.debug_counter.gt.290)debug=.true.
                     if(debug)write(*,*)"entering fiber contact"
                     call fiber_contact(i,max_rad,stop_slide,stop_glide)
                     if(debug)write(*,*)"exiting fiber contact"
@@ -257,8 +259,9 @@ module fibers_place
 
                     ! MOVE FIBER!
                     fibers(i,:)=fiber_move(i,stop_glide,stop_slide,friction,stopped)
-                    
+                    debug_counter=debug_counter+1
                 end do ! dropping loop
+                if(i.gt.2358)debug=.false.
                 if (contacts(i,1,9).eq.4)bending_case=1
                 if (contacts(i,1,1).gt.0.d0) then
                     if(debug)write(*,*)"entering bending test"
@@ -499,7 +502,8 @@ module fibers_place
         !bent=0.d0
         num_contacts(i)=0
         contacts(i,:,:)=0
-        debug=.false.
+        !debug=.false.
+        !if(i.gt.2358)debug=.true.
         if(debug) write(*,*) 'In fiber_contact...'
 
         ! Check gross contact
@@ -517,9 +521,9 @@ module fibers_place
             ! check fine contact...
             if (contact) then
                 if (bent(j).eq.1) then
-                    if(debug)write(*,*)'entering bent_contant'
+                    if(debug)write(*,*)'entering bent_contact'
                     call bent_contact(i,j,contact,contact_pt3D)
-                    if(debug)write(*,*)'exiting bent_contant'
+                    if(debug)write(*,*)'exiting bent_contact'
                 else
                     if (debug) write (*,*) ' Check Fine contact: ',i,j
                     contact=.false.
@@ -620,7 +624,7 @@ module fibers_place
                 
 
             end if ! end fine check
-            !write(*,*)'Here 612'
+            if(debug)write(*,*)'Here 623'
             if (contact) then
                 !write(*,*) ' Record fine contact! ',i,j
                 !write(*,*) ' Fiber 1: ',fibers(i,1:3),fibers(i,5:7)
@@ -629,13 +633,18 @@ module fibers_place
                 !write(*,*) ' near_pt3D(1),(2): ',near_pt3D(1,:), near_pt3D(2,:) 
                 num_contacts(i)=num_contacts(i)+1
                 contacts(i,num_contacts(i),1)=j
+                if(debug)write(*,*)'Here 633'
                 contacts(i,num_contacts(i),2:4)=contact_pt3D(1:3)
                 contacts(i,num_contacts(i),5)=dist
+                if(debug)write(*,*)'Here 636'
                 contacts(i,num_contacts(i),6:8)=contact_norm(1:3)/norm2(contact_norm(1:3))
+                if(debug)write(*,*)contact_case
+                if(debug)write(*,*)num_contacts(i)
                 contacts(i,num_contacts(i),9)=contact_case
-                !write(*,*)'Here 625'
+                if(debug)write(*,*)'Here 638'
                 ! If end of falling fiber is contact, set stop_slide and stop_glide, if appropriate
-                if ((contact_case .eq. 1) .or. (contact_case .eq. 3)) then
+                 if ((contact_case .eq. 1) .or. (contact_case .eq. 3)) then
+                    if(debug)write(*,*)'Here 642'
                     ! Check if falling fiber lower end is the contact end... if so, stop_slide
                     stopped_end=4*int(near_ptP(1))+3 ! 0->3, 1->7
                     free_end=7-4*int(near_ptP(1)) ! 0->7, 1->3
@@ -646,13 +655,13 @@ module fibers_place
                         stop_glide(2)=.true.
                     end if
                 end if
-            
+                
                 if (.false.) then
                     write(*,*) ' Record fine contact!, Contact Case ',i,j,contact_case
                     write(*,*) ' Contacts: ',contacts(i,num_contacts(i),:)
                 end if
             end if
-
+        if(debug)write(*,*)'Here 656'
         end do
 
         bottom=0.d0-0.25*box_length(3)
@@ -674,7 +683,6 @@ module fibers_place
                 !read(*,*)
             end if
         end do
-        debug=.false.
     end subroutine
 
     function fiber_glide(i, friction, stop_glide) result(delta_pos)
@@ -1546,7 +1554,7 @@ subroutine bent_contact(i,j,contact,contact_pt3D)
     p1=matmul(T,p1)
     p2=matmul(T,p2)
     cog=matmul(T,cog)
-    debug=.true.
+    debug=.false.
     if(debug)write(*,*)'Translated Endpoint 1 =',endpoint1
     if(debug)write(*,*)'Translated Endpoint 2 =',endpoint2
     test=0.d0

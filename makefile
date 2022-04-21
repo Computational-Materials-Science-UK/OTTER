@@ -41,8 +41,8 @@ OBJ := $(OBJ_DIR)/bspline_kinds_module.o $(OBJ_DIR)/bspline_sub_module.o \
     $(OBJ_DIR)/otter_01_globals.o \
 	$(OBJ_DIR)/otter_02_math.o \
 	$(OBJ_DIR)/otter_02_ligaments_globals.o\
-    $(OBJ_DIR)/otter_02_spheres_globals.o \
-	$(OBJ_DIR)/otter_02_fibers_globals.o \
+    $(OBJ_DIR)/otter_03_spheres_globals.o \
+	$(OBJ_DIR)/otter_03_fibers_globals.o \
 	$(OBJ_DIR)/otter_03_input.o \
     $(OBJ_DIR)/otter_fibers.o $(OBJ_DIR)/otter_ligaments.o \
     $(OBJ_DIR)/otter_spheres.o \
